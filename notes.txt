@@ -1,0 +1,60 @@
+## General feedback
+* Drivers need to know who they are picking up
+* Drivers need to know where to go (easier than now)
+* Do not change the time and scheduling technique right now
+* Riders need to know that the driver is on the way
+* Riders can confirm with drivers 15 minutes before the ride
+    * Maybe rather than the confirm driver taps "OTW" (probably after last drop off)
+    * Then the rider can send a thumbs up or something
+    * Driver always needs to check location of the next drop off so this isn't a big additional thing
+* Riders can track the driver that they have been assigned within this 15 minute window
+* Also maybe let them see if the driver is currently dropping someone off
+* Send link to rider page for the ride
+    * This is a temporary link generated for the rider so they don't have to log in or do anything
+    * Eventually we can add the ability to log in as a rider and upcoming rides for frequent riders
+
+## Layout
+* Admin profile
+    * Rides page - Can see and input all rides for the day in a list (maybe through a plus on the page)
+        * Can also do it for any amount of upcoming days
+        * Can delete rides as well
+        * Manual entry now, upgrade to csv/xlsv reading later
+        * Fields should be (need to get more info on this, default to Name/Time/Phone/Location from/Location to/Driver/UCSB email)
+        * Color code rides on driver
+        * Allow sort by all fields
+        * Make them have a link as well to take it to the ride page link that is sent to rider (link to placeholder for now)
+    * Archive page - We can archive rides up to (30 days? Temporary for now, can set option later)
+    * Drivers page - Can see and manage all driver profiles
+        * Can see which drivers are on which ride
+            * We don't have to build a driver "all the time" tracker right now, just allow admin to see driver locations through the temporary link to the rider
+        * Can add drivers
+            * We assign the drivers through UCSB email so they don't have to make an account or anything. This guarentees only drivers can see important information.
+            * When adding a driver you just add a UCSB email to driver lists
+            * Use this list to determine which accounts logging into site is which role
+                * All other users that log in are assigned to a default "rider" role in which they can only see rides assigned to them
+
+1. Scrap the code. Keep the stack we have.
+2. Keep it simple. Yes we can have a separate admin email list with multiple admins. Allow me a variable that I can input my email into that one time pops it into the email list to bootstrap it.
+3. Do google OAUTH for now. We're only adding emails with .ucsb.edu at the of the email to the lists anyway. We can upgrade this to specifically UCSB login for now. So basically any email can login through OAUTH, but only emails we have on the list can see driver page.
+4. Don't complicate with this for now, we can address it later. Assume that someone cannot be both (all drivers know each other so it's not hard to do an impromptu ride).
+5. All information is entered manually by dispatch into a google sheets which is shared with all drivers. The dispatch team is the one who verifies that this person is valid to be a rider and they input and validate all information into the fields. We want this process to be as similar as possible. I forgot to mention that we can give drivers access to the all rides list, but have a setting to filter only rides assigned to them. This is to allow them to switch rides through word of mouth if needed, as they do now. We can also add an "official" way to switch, but save that for later.
+6. Have it be strings that are named spots for now. The pins will just be on a map of campus that the rider will submit when filling out the form, or manually pinned by dispatch.
+7. Should be a dropdown field that comes with entering a ride.
+8. Yes, just allow this for now. All rides can be deleted, just give a confirmation window to protect it.
+9. Allow a day view and a week view (5 days; Mon-Fri). Also do a time window from 8am to 10pm.
+10. Archive at the end of the week when the week view would switch anyway. Don't worry about no shows, we can handle it externally. The archive is just there in case, we have no immediate need of anything from it.
+11. Show "not confirmed", "on the way", and "completed".
+12. Do both an SMS notification and a updated status on the link (same states as on the ride list).
+13. We should notify admin. We can have the phone number to dispatch that they already call in this situation currently on the ride page. We will contact the rider through SMS externally.
+14. Let's do a # of drop offs away and a map of where their driver is. This information is shown starting at the 15 min mark prior to the ride, and for 15 min after the ride is scheduled. We do this because the aim is to not add new things drivers must do on their routes.
+15. See #14. for link durations. After that just expire the link. We'll deal with it later.
+16. Let's do email, name, phone, color. Color is something admin picks. Do preset 12 colors, that will be plenty for drivers.
+17. Unassign them. In fact, unassigned rides should have their own drop down box area above the assigned rides list. It should just be a bar that says unassigned rides (0) $expand arrow$ that shows number of unassigned and expands when there are any.
+18. Design admin view for desktop, and driver/rider for mobile. Have driver/rider view just be the mobile view with bars on desktop view.
+19. Roughly 40-50 rides a day and about 5 drivers.
+20. Let's leave styling minimal (but not too stripped down) at the moment. We can style it step by step at the end.
+
+1. Let's also keep this simple. Drivers transition it from "not confirmed" to "on the way" upon button press. Confirmed is essentially just a box that gets checked when the rider confirms. This is mostly to let the driver know that the rider will be there. We just lazily let the ride go to complete when it expires OR if the driver assigned to this ride starts another ride. By the way, if the driver starts another ride, the link should also take the rider to a ride complete page, and maybe we can add an optional rating/feedback system; at this point they can close the link.
+2. Again, this is for the drivers. They will likely call their rider if they are not there. The thumbs up is just a safeguard against if the rider happens to be standing in the wrong place (i.e. a different part of the building), so that the drivers can deduce whether or not the rider has forgotten about or abandoned the ride.
+3. No, we'll use a map with names of buildings on it. Since everyone using this will be students, they will know where these locations are. We haven't figured out how to get exact pinned locations from riders applying yet so assume that the only way to get these maps is through dispatch manual entry process for now. So it'll be a map where dispatchers drop pins on a map. This is an optional field, and just the map itself should be shown when it is not filled out.
+4. Actually let's scrap the 5 day idea. Along with this archive rides immediately whenever the system moves to the next day at 8am. Reject entry times for now. We'll address if it comes up, but drivers don't usually work outside of this window.

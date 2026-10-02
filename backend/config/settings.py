@@ -1,0 +1,179 @@
+"""
+Settings for Cart Dispatch.
+
+Everything that differs between your laptop and production comes from
+environment variables, so the same code runs in both places. Locally, put
+them in backend/.env (copy .env.example); in production, set them on the host.
+
+  DJANGO_DEBUG                "true" locally; leave unset in production
+  DJANGO_SECRET_KEY           required when DEBUG is off
+  DATABASE_URL                Postgres URL in production; SQLite if unset
+  GOOGLE_CLIENT_ID            OAuth client ID from Google Cloud Console
+  BOOTSTRAP_ADMIN_EMAIL       your email; added to the admin list on first sign-in
+                              if the admin list is empty
+  ALLOWED_EMAIL_DOMAINS       domains allowed on the admin/driver lists
+                              (default "ucsb.edu", which also allows umail.ucsb.edu)
+  DEV_LOGIN                   "true" to show a sign-in-as-any-email form (DEBUG only)
+  DJANGO_ALLOWED_HOSTS        extra hostnames, comma-separated (custom domains)
+  DJANGO_CSRF_TRUSTED_ORIGINS extra origins, comma-separated, with https://
+"""
+
+import os
+from pathlib import Path
+
+import dj_database_url
+from dotenv import load_dotenv
+
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=""):
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load backend/.env if it exists (local development). Variables already set in
+# the environment win, so production settings are never overridden by a file.
+load_dotenv(BASE_DIR / ".env")
+FRONTEND_DIST = BASE_DIR / "frontend_dist"  # `npm run build` writes the React app here
+
+DEBUG = env_bool("DJANGO_DEBUG")
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-only-insecure-key"
+    else:
+        raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is off.")
+
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"] + env_list("DJANGO_ALLOWED_HOSTS")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+if DEBUG:
+    # The Vite dev server proxies API calls from these origins.
+    CSRF_TRUSTED_ORIGINS += ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+# Render sets this to the app's public hostname (xyz.onrender.com).
+RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_HOST:
+    ALLOWED_HOSTS.append(RENDER_HOST)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_HOST}")
+
+
+# --- App-specific settings -------------------------------------------------
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+BOOTSTRAP_ADMIN_EMAIL = os.environ.get("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+ALLOWED_EMAIL_DOMAINS = [d.lower() for d in env_list("ALLOWED_EMAIL_DOMAINS", "ucsb.edu")]
+
+DEV_LOGIN = env_bool("DEV_LOGIN")
+if DEV_LOGIN and not DEBUG:
+    raise RuntimeError("DEV_LOGIN lets anyone sign in as anyone. It only works with DJANGO_DEBUG on.")
+
+
+# --- Django ----------------------------------------------------------------
+
+INSTALLED_APPS = [
+    "config.apps.DispatchAdminConfig",  # Django's admin, gated by our admin email list
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "whitenoise.runserver_nostatic",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "accounts",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+DATABASES = {
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
+
+# Users only sign in with Google, so Django passwords are never set.
+AUTH_PASSWORD_VALIDATORS = []
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = os.environ.get("TIME_ZONE", "America/Los_Angeles")
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [FRONTEND_DIST] if FRONTEND_DIST.exists() else []
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Hashed, compressed filenames in production; plain files in development
+    # and tests, where collectstatic hasn't been run.
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        if DEBUG
+        else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+}
+
+# Stay signed in for two weeks so drivers aren't re-signing in every shift.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
+
+# Google's sign-in popup needs to talk back to this page. Django's default
+# ("same-origin") blocks that.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
+}
