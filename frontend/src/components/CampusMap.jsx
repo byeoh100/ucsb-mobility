@@ -5,8 +5,15 @@ import mapUrl from "../assets/campus-map.jpg";
 // land in the same place at any size. Shared by the driver view and the
 // rider page; `children` can add overlays (e.g. the driver's location, later).
 //
-// Props: pickup, dropoff ({ x, y } or null), children, note (extra caption text)
-export default function CampusMap({ pickup, dropoff, children, note }) {
+// Props: pickup, dropoff ({ x, y } or null), children, note (extra caption text),
+//        emptyNote (caption when there are no pins; the default is worded for drivers)
+export default function CampusMap({
+  pickup,
+  dropoff,
+  children,
+  note,
+  emptyNote = "The rider hasn't marked spots on the map.",
+}) {
   const hasPins = Boolean(pickup || dropoff);
   return (
     <figure className="campus-map">
@@ -23,7 +30,7 @@ export default function CampusMap({ pickup, dropoff, children, note }) {
             {dropoff && <span className="legend legend-dropoff">Drop-off</span>}
           </>
         ) : (
-          <span className="muted">The rider hasn't marked spots on the map.</span>
+          emptyNote && <span className="muted">{emptyNote}</span>
         )}
         {note && <span className="campus-map-note">{note}</span>}
       </figcaption>
@@ -32,10 +39,11 @@ export default function CampusMap({ pickup, dropoff, children, note }) {
 }
 
 // A map pin whose tip (bottom center) sits exactly on the point.
-export function Pin({ point, kind, label }) {
+export function Pin({ point, kind, label, className = "", ...rest }) {
   return (
     <svg
-      className={`map-pin map-pin-${kind}`}
+      {...rest}
+      className={`map-pin map-pin-${kind} ${className}`}
       style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
       viewBox="0 0 24 32"
       role="img"

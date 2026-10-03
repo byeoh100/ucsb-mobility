@@ -15,6 +15,7 @@ them in backend/.env (copy .env.example); in production, set them on the host.
                               (default "ucsb.edu", which also allows umail.ucsb.edu)
   DEV_LOGIN                   "true" to show a sign-in-as-any-email form (DEBUG only)
   ARCHIVE_RETENTION_DAYS      days archived rides are kept (default 30)
+  DISPATCH_PHONE              dispatch's number, shown on rider pages
   TIME_ZONE                   campus time zone (default America/Los_Angeles)
   DJANGO_ALLOWED_HOSTS        extra hostnames, comma-separated (custom domains)
   DJANGO_CSRF_TRUSTED_ORIGINS extra origins, comma-separated, with https://
@@ -72,6 +73,9 @@ ALLOWED_EMAIL_DOMAINS = [d.lower() for d in env_list("ALLOWED_EMAIL_DOMAINS", "u
 
 # How long archived rides are kept before being deleted for good.
 ARCHIVE_RETENTION_DAYS = int(os.environ.get("ARCHIVE_RETENTION_DAYS", "30"))
+
+# Shown on rider pages ("Questions? Call dispatch"). Digits or any format.
+DISPATCH_PHONE = os.environ.get("DISPATCH_PHONE", "")
 
 DEV_LOGIN = env_bool("DEV_LOGIN")
 if DEV_LOGIN and not DEBUG:
@@ -162,6 +166,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    # Public endpoints (phone lookup) are rate-limited per visitor.
+    "DEFAULT_THROTTLE_RATES": {"ride_lookup": "10/min"},
 }
 
 # Stay signed in for two weeks so drivers aren't re-signing in every shift.

@@ -2,7 +2,7 @@
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
-**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), admin → Archive, and the driver view (My/All rides, Up next, On the way with Undo, tap-to-call, campus map with the rider's pins). Drivers share their location while a ride is on the way (shown as a dot on the campus map; dispatch sees it on the Drivers page). The rider page comes next.
+**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), admin → Archive, and the driver view (My/All rides, Up next, On the way with Undo, tap-to-call, campus map with the rider's pins). Drivers share their location while a ride is on the way (shown as a dot on the campus map; dispatch sees it on the Drivers page). Riders find their ride by phone number on the home page and follow it on its rider page (`/r/<token>`): status, drop-offs away, the driver's dot, a 👍, and optional pins they drag onto the map.
 
 ## How roles work
 
@@ -47,7 +47,9 @@ frontend/src/
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
 | `/api/location/` | driver's phone reporting GPS (only accepted while a ride is on the way) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
-| `/r/<token>` | a rider's page for one ride (placeholder) |
+| `/r/<token>` | a rider's page for one ride (public; the token is the key) |
+| `/api/r/<token>/`, `/confirm/`, `/pins/` | rider page data, thumbs up, pins (public) |
+| `/api/lookup/?phone=` | rides by phone number (public, 10 lookups/min per visitor) |
 | `/django-admin/` | Django's raw data editor, developers only (see below) |
 
 ## Run it locally
@@ -58,7 +60,7 @@ You need Python 3.12+ and Node 20.19+ (or 22.12+).
 
 ```bash
 cd backend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                   # Windows: copy .env.example .env
@@ -161,6 +163,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
 | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |
+| `DISPATCH_PHONE` | recommended | dispatch's number, shown on rider pages |
 | `ARCHIVE_RETENTION_DAYS` | optional | days archived rides are kept (default 30) |
 | `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` | custom domains | see above |
 
@@ -173,6 +176,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
+- Rider page phases (`rides/rider_page.py`): more than 15 min before pickup it shows details and lets riders place pins; from 15 min before to 15 min after it's live (status, drop-offs away, driver's position, 👍 once the driver is on the way); once the driver starts their next ride it says the ride is complete; after the window the link shows nothing but "expired".
 - Location privacy: phones send GPS only while their driver has a ride on the way; the server keeps just the latest fix per driver and only shows it during that ride, and only ever as a position on the map image (raw GPS never leaves the server). The phone's screen is kept awake while sharing, since browsers pause GPS when it locks.
 - `components/CampusMap.jsx` draws the campus image with the rider's pins (tips anchored exactly on the stored point); the rider page will reuse it.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).

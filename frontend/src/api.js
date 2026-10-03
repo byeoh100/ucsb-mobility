@@ -76,3 +76,11 @@ export const archiveApi = {
 export const locationApi = {
   send: ({ lat, lng, accuracy }) => request("/location/", { method: "POST", body: { lat, lng, accuracy } }),
 };
+
+// Public rider endpoints: no sign-in, the ride link token is the key.
+export const riderApi = {
+  page: (token) => request(`/r/${encodeURIComponent(token)}/`),
+  confirm: (token) => request(`/r/${encodeURIComponent(token)}/confirm/`, { method: "POST" }),
+  pins: (token, pins) => request(`/r/${encodeURIComponent(token)}/pins/`, { method: "PUT", body: pins }),
+  lookup: (phone) => request(`/lookup/?phone=${encodeURIComponent(phone)}`),
+};
