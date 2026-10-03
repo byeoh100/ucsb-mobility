@@ -66,6 +66,17 @@ class RideSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["link_token", "started_at"]
 
+    # Ride progress is private: only dispatch and the ride's own driver see it.
+    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at")
+
+    def to_representation(self, ride):
+        data = super().to_representation(ride)
+        viewer = self.context.get("viewer")  # None = trusted caller (e.g. archive, admin tools)
+        if viewer is not None and not viewer["is_admin"] and ride.driver_id != viewer["driver_id"]:
+            for field in self.PRIVATE_FIELDS:
+                data[field] = None
+        return data
+
     # --- read-only computed fields ---
 
     def get_status(self, ride):

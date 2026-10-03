@@ -2,7 +2,7 @@
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
-**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), and admin → Archive. The driver and rider views come in later parts.
+**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), admin → Archive, and the driver view (My/All rides, Up next, On the way with Undo, tap-to-call, campus map with the rider's pins). Driver location sharing and the rider page come next.
 
 ## How roles work
 
@@ -32,7 +32,7 @@ frontend/src/
   pages/        ride lookup home, sign-in, not found
   admin/        admin pages (drivers/ is the first real one)
   lib/          small shared helpers (phone formatting, campus dates/times)
-  driver/       driver view (placeholder)
+  driver/       driver view: DriverHome, RideCard, RideRow
 ```
 
 | URL | What |
@@ -44,6 +44,7 @@ frontend/src/
 | `/api/auth/session/` | who's signed in, and their role |
 | `/api/drivers/` | driver list, add, edit, remove (admins only) |
 | `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
+| `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
 | `/r/<token>` | a rider's page for one ride (placeholder) |
 | `/django-admin/` | Django's raw data editor, developers only (see below) |
@@ -156,6 +157,8 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - Archiving is computed too (`rides/archive.py`): a day's rides leave the Rides page and become read-only at 8:00 AM the next morning. Rides older than `ARCHIVE_RETENTION_DAYS` are deleted by `purge_expired()`, which runs as the rides and archive pages load, so no scheduled job is needed. `seed_demo --date <past date>` fills the archive for testing.
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
+- Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
+- `components/CampusMap.jsx` draws the campus image with the rider's pins (tips anchored exactly on the stored point); the rider page will reuse it.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
 - Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).
 - New admin pages go in `frontend/src/admin/` and get a route under `/admin` in `App.jsx`.

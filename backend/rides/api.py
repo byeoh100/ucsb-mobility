@@ -4,15 +4,18 @@ from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.models import Driver
 from accounts.permissions import IsAdmin, IsDriverOrAdmin
+from accounts.validators import normalize_email
 
 from .archive import archive_cutoff, is_archived, purge_expired
 from .models import Ride
 from .serializers import RideSerializer
-from .status import statuses_for
+from .status import COMPLETED, ON_THE_WAY, statuses_for
 
 
 def parse_date(raw):
@@ -53,7 +56,7 @@ class RideViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
 
     def get_permissions(self):
-        if self.action in ("list", "retrieve"):
+        if self.action in ("list", "retrieve", "start", "unstart"):
             return [IsDriverOrAdmin()]
         return [IsAdmin()]
 
@@ -84,9 +87,52 @@ class RideViewSet(viewsets.ModelViewSet):
             return archived_response()
         return super().destroy(request, *args, **kwargs)
 
+    # --- Driver actions -----------------------------------------------------
+
+    @action(detail=True, methods=["post"])
+    def start(self, request, pk=None):
+        """POST /api/rides/<id>/start/: the driver taps "On the way".
+
+        Starting a ride also completes the driver's previous one (see
+        rides/status.py), so drivers never have to mark rides done.
+        """
+        ride, problem = self.own_ride_for_today(request)
+        if problem:
+            return problem
+        current = self.statuses([ride])[ride.id]
+        if current == COMPLETED:
+            return error("This ride is already completed.")
+        if current != ON_THE_WAY:
+            ride.started_at = timezone.now()
+            ride.save(update_fields=["started_at", "updated_at"])
+        return Response(self.get_serializer(ride).data)
+
+    @action(detail=True, methods=["post"])
+    def unstart(self, request, pk=None):
+        """POST /api/rides/<id>/unstart/: undo a mistaken "On the way"."""
+        ride, problem = self.own_ride_for_today(request)
+        if problem:
+            return problem
+        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+            return error("Only a ride that's on the way can be undone.")
+        ride.started_at = None
+        ride.save(update_fields=["started_at", "updated_at"])
+        return Response(self.get_serializer(ride).data)
+
+    def own_ride_for_today(self, request):
+        """The ride, if it's the signed-in driver's and it's today; else an error."""
+        ride = self.get_object()
+        driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+        if driver is None or ride.driver_id != driver.id:
+            return ride, error("Only the driver assigned to this ride can do that.", status.HTTP_403_FORBIDDEN)
+        if timezone.localtime(ride.pickup_time).date() != timezone.localdate():
+            return ride, error("You can only start today's rides.")
+        return ride, None
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["now"] = timezone.now()
+        context["viewer"] = viewer_for(self.request)
         return context
 
     def get_serializer(self, *args, **kwargs):
@@ -102,8 +148,22 @@ class RideViewSet(viewsets.ModelViewSet):
         return ride_statuses(rides)
 
 
+def viewer_for(request):
+    """Who's looking, for hiding other drivers' ride progress (see RideSerializer)."""
+    from accounts.roles import Role, get_role
+
+    if get_role(request.user) == Role.ADMIN:
+        return {"is_admin": True, "driver_id": None}
+    driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+    return {"is_admin": False, "driver_id": driver.id if driver else None}
+
+
+def error(message, code=status.HTTP_400_BAD_REQUEST):
+    return Response({"error": message}, status=code)
+
+
 def archived_response():
-    return Response({"error": "This ride is archived and can't be changed."}, status=status.HTTP_400_BAD_REQUEST)
+    return error("This ride is archived and can't be changed.")
 
 
 class ArchiveDaysView(APIView):

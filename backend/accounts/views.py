@@ -21,6 +21,7 @@ from google.oauth2 import id_token
 
 from rides.archive import ARCHIVE_HOUR
 
+from .models import Driver
 from .roles import bootstrap_admin, get_role
 from .validators import normalize_email
 
@@ -43,12 +44,20 @@ def session_payload(request):
         },
     }
     if user.is_authenticated:
+        role = get_role(user)
         payload["user"] = {
             "email": user.email,
             "name": user.get_full_name() or user.email,
-            "role": get_role(user),
+            "role": role,
+            # Drivers' own profile, so the driver view knows which rides are theirs.
+            "driver": driver_profile(user) if role == "driver" else None,
         }
     return payload
+
+
+def driver_profile(user):
+    driver = Driver.objects.filter(email=normalize_email(user.email)).first()
+    return {"id": driver.id, "name": driver.name, "color": driver.color} if driver else None
 
 
 def sign_in(request, email, first_name="", last_name=""):

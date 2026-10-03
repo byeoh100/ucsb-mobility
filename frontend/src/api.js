@@ -64,6 +64,8 @@ export const ridesApi = {
   create: (ride) => request("/rides/", { method: "POST", body: ride }),
   update: (id, changes) => request(`/rides/${id}/`, { method: "PATCH", body: changes }),
   remove: (id) => request(`/rides/${id}/`, { method: "DELETE" }),
+  start: (id) => request(`/rides/${id}/start/`, { method: "POST" }),
+  unstart: (id) => request(`/rides/${id}/unstart/`, { method: "POST" }),
 };
 
 export const archiveApi = {
