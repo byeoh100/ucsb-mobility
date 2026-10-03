@@ -58,3 +58,10 @@ export const driversApi = {
   update: (id, changes) => request(`/drivers/${id}/`, { method: "PATCH", body: changes }),
   remove: (id) => request(`/drivers/${id}/`, { method: "DELETE" }),
 };
+
+export const ridesApi = {
+  list: (date) => request(`/rides/?date=${encodeURIComponent(date)}`),
+  create: (ride) => request("/rides/", { method: "POST", body: ride }),
+  update: (id, changes) => request(`/rides/${id}/`, { method: "PATCH", body: changes }),
+  remove: (id) => request(`/rides/${id}/`, { method: "DELETE" }),
+};

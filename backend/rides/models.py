@@ -1,0 +1,58 @@
+import secrets
+
+from django.db import models
+
+
+def new_link_token():
+    # ~22 URL-safe characters: unguessable, so the rider link needs no login.
+    return secrets.token_urlsafe(16)
+
+
+class Ride(models.Model):
+    """One scheduled ride, entered by dispatch.
+
+    Status isn't stored. It's worked out from started_at and the clock each
+    time it's read (see rides/status.py), so rides complete "lazily" with no
+    background jobs.
+    """
+
+    # Rider (validated by dispatch before entry; riders don't have accounts)
+    rider_name = models.CharField(max_length=120)
+    rider_phone = models.CharField(max_length=10, help_text="10 digits, e.g. 8055550123")
+    rider_email = models.EmailField()
+
+    pickup_time = models.DateTimeField()
+
+    # Places: a name students recognize, plus a required map pin.
+    pickup_name = models.CharField(max_length=120)
+    pickup_lat = models.DecimalField(max_digits=9, decimal_places=6)
+    pickup_lng = models.DecimalField(max_digits=9, decimal_places=6)
+    dropoff_name = models.CharField(max_length=120)
+    dropoff_lat = models.DecimalField(max_digits=9, decimal_places=6)
+    dropoff_lng = models.DecimalField(max_digits=9, decimal_places=6)
+
+    # Removing a driver leaves their rides unassigned.
+    driver = models.ForeignKey(
+        "accounts.Driver", null=True, blank=True, on_delete=models.SET_NULL, related_name="rides"
+    )
+
+    # Set by the driver tapping "On the way" (driver view, later part).
+    started_at = models.DateTimeField(null=True, blank=True)
+    # Set by the rider's thumbs up on their link page (later part).
+    rider_confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    link_token = models.CharField(max_length=32, unique=True, default=new_link_token, editable=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["pickup_time"]
+        indexes = [
+            models.Index(fields=["pickup_time"]),
+            models.Index(fields=["driver", "pickup_time"]),
+            models.Index(fields=["rider_phone"]),
+        ]
+
+    def __str__(self):
+        return f"{self.rider_name} · {self.pickup_name} → {self.dropoff_name}"

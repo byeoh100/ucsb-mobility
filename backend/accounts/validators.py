@@ -17,3 +17,8 @@ def validate_list_email(email):
     if not email_domain_allowed(email):
         allowed = ", ".join(settings.ALLOWED_EMAIL_DOMAINS)
         raise ValidationError(f"Only {allowed} email addresses can be added to this list.")
+
+
+def validate_rider_email(email):
+    if not email_domain_allowed(email):
+        raise ValidationError("Enter the rider's UCSB email address.")

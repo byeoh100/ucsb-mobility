@@ -105,23 +105,58 @@ class DevLoginTests(TestCase):
         self.assertEqual(r.json()["user"]["role"], "rider")
 
 
-class DjangoAdminGateTests(TestCase):
-    def test_follows_admin_list(self):
-        user = User.objects.create(username="x@ucsb.edu", email="x@ucsb.edu", is_staff=True, is_superuser=True)
-        self.client.force_login(user)
-        # Stale Django flags alone don't grant access; the admin list does.
-        self.assertEqual(self.client.get("/django-admin/").status_code, 302)
-        AdminEmail.objects.create(email="x@ucsb.edu")
+class DjangoAdminAccessTests(TestCase):
+    """The Django admin uses Django's defaults: developer superusers only."""
+
+    def google_sign_in(self, email):
+        with mock.patch(GOOGLE, return_value=google_info(email)), \
+             override_settings(GOOGLE_CLIENT_ID="test-client"):
+            self.client.post("/api/auth/google/", {"credential": "x"}, content_type="application/json")
+
+    def test_dispatch_admin_cannot_open_django_admin(self):
+        AdminEmail.objects.create(email="dispatch@ucsb.edu")
+        self.google_sign_in("dispatch@ucsb.edu")
+        self.assertEqual(self.client.get("/api/auth/session/").json()["user"]["role"], "admin")
+        user = User.objects.get(username="dispatch@ucsb.edu")
+        self.assertFalse(user.is_staff or user.is_superuser)
+        r = self.client.get("/django-admin/")
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r["Location"].startswith("/django-admin/login/"))
+
+    def test_developer_superuser_can_open_django_admin(self):
+        User.objects.create_superuser("dev", "dev@ucsb.edu", "a-long-dev-password")
+        self.assertTrue(self.client.login(username="dev", password="a-long-dev-password"))
         self.assertEqual(self.client.get("/django-admin/").status_code, 200)
 
-    def test_anonymous_sent_to_sign_in(self):
-        r = self.client.get("/django-admin/", follow=True)
-        self.assertEqual(r.redirect_chain[-1][0], "/sign-in?next=/django-admin/")
+    def test_google_sign_in_keeps_existing_developer_password(self):
+        # A developer whose superuser username is their Google email.
+        User.objects.create_superuser("byeoh@ucsb.edu", "byeoh@ucsb.edu", "a-long-dev-password")
+        self.google_sign_in("byeoh@ucsb.edu")
+        user = User.objects.get(username="byeoh@ucsb.edu")
+        self.assertTrue(user.check_password("a-long-dev-password"))
+        self.assertTrue(user.is_superuser)
 
-    def test_signed_in_non_admin_gets_403_not_a_loop(self):
-        self.client.force_login(User.objects.create(username="d@ucsb.edu", email="d@ucsb.edu"))
-        r = self.client.get("/django-admin/", follow=True)
-        self.assertEqual(r.status_code, 403)
+    def test_new_google_accounts_have_no_password(self):
+        self.google_sign_in("new@ucsb.edu")
+        self.assertFalse(User.objects.get(username="new@ucsb.edu").has_usable_password())
+
+    def test_cleanup_migration_only_clears_google_accounts(self):
+        import importlib
+
+        from django.apps import apps
+
+        old_admin = User.objects.create(username="old@ucsb.edu", is_staff=True, is_superuser=True)
+        old_admin.set_unusable_password()
+        old_admin.save()
+        dev = User.objects.create_superuser("dev", "dev@ucsb.edu", "a-long-dev-password")
+
+        migration = importlib.import_module("accounts.migrations.0003_revoke_google_account_staff")
+        migration.revoke_google_account_staff(apps, None)
+
+        old_admin.refresh_from_db()
+        dev.refresh_from_db()
+        self.assertFalse(old_admin.is_staff or old_admin.is_superuser)
+        self.assertTrue(dev.is_staff and dev.is_superuser)
 
     def test_get_role_anonymous(self):
         from django.contrib.auth.models import AnonymousUser

@@ -2,7 +2,7 @@
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
-**Built so far:** Google sign-in, role lists, page shells, and admin → Drivers (table; add/edit with phone formatting and a one-driver-per-color picker; remove with confirmation). Rides and Archive are placeholders that later parts fill in.
+**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides day view (date switcher, sortable color-coded table, unassigned bar). The ride form, ride deletion, Archive, and the driver/rider views come in later parts.
 
 ## How roles work
 
@@ -22,15 +22,16 @@ Roles are checked on every request, so adding or removing someone from a list ta
 
 ```
 backend/
-  config/       settings, URLs, React-serving view, Django admin gating
+  config/       settings, URLs, React-serving view
   accounts/     admin list, driver list, roles, sign-in and drivers APIs, tests
+  rides/        ride model, status rules, rides API, seed_demo command, tests
   common/       shared helpers (phone number cleanup)
 frontend/src/
   auth/         sign-in state, role guard, Google button
   layouts/      AdminLayout (desktop) and MobileLayout (phone column)
   pages/        ride lookup home, sign-in, not found
   admin/        admin pages (drivers/ is the first real one)
-  lib/          small shared helpers (phone formatting)
+  lib/          small shared helpers (phone formatting, campus dates/times)
   driver/       driver view (placeholder)
 ```
 
@@ -42,7 +43,9 @@ frontend/src/
 | `/driver` | driver profile |
 | `/api/auth/session/` | who's signed in, and their role |
 | `/api/drivers/` | driver list, add, edit, remove (admins only) |
-| `/django-admin/` | Django's raw data editor, for admins (handy until the Drivers page exists) |
+| `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
+| `/r/<token>` | a rider's page for one ride (placeholder) |
+| `/django-admin/` | Django's raw data editor, developers only (see below) |
 
 ## Run it locally
 
@@ -52,7 +55,7 @@ You need Python 3.12+ and Node 20.19+ (or 22.12+).
 
 ```bash
 cd backend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                   # Windows: copy .env.example .env
@@ -73,13 +76,29 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and use **Development sign-in** with your bootstrap email to become admin. To try other roles, add a driver at http://localhost:5173/django-admin/, then sign in as that email (driver) or any other email (rider).
+Open http://localhost:5173 and use **Development sign-in** with your bootstrap email to become admin. To try other roles, add a driver on the Drivers page, then sign in as that email (driver) or any other email (rider).
+
+**Demo data:** `python manage.py seed_demo` adds five demo drivers and a day of rides (today, or `--date 2026-10-06`; `--clear` deletes all rides first). It only runs with `DJANGO_DEBUG` on.
 
 `DEV_LOGIN` lets anyone sign in as anyone, so it refuses to run unless `DJANGO_DEBUG` is on.
 
 **Tests:** `python manage.py test` in `backend/`.
 
 `.env` is git-ignored and only for your machine. In production, set the same variables on the host instead (Render's dashboard), which take priority over any file.
+
+## Developer access (`/django-admin/`)
+
+Django's built-in admin is a raw database editor for developers. It uses Django's default rules: only **superuser** accounts, which sign in with a username and password. Google sign-in never grants access, so dispatchers (on the admin list) only ever see the React admin pages.
+
+Create your developer account locally with:
+
+```bash
+python manage.py createsuperuser
+```
+
+On Render, set `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_EMAIL` and `DJANGO_SUPERUSER_PASSWORD`. `start.sh` creates the account on the next start, and skips it once it exists. Use a long, unique password; this page is on the public internet.
+
+To give another developer access, create a superuser for them (or tick *Superuser status* on their account inside `/django-admin/`).
 
 ## Google sign-in setup
 
@@ -123,6 +142,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `BOOTSTRAP_ADMIN_EMAIL` | both | seeds the first admin |
 | `ALLOWED_EMAIL_DOMAINS` | optional | list domains, comma-separated (default `ucsb.edu`) |
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
+| `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |
 | `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` | custom domains | see above |
 
@@ -130,6 +150,8 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 
 - API views use `accounts.permissions.IsAdmin` or `IsDriverOrAdmin`.
 - Phone numbers are stored as 10 digits (`common/phone.py`). `frontend/src/lib/phone.js` formats them as (805) - 555 - 0123, and `components/PhoneInput.jsx` is the typing-as-you-go input; reuse it for rider phones.
+- Ride status is computed, never stored (`rides/status.py`): *completed* 15 min after pickup or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
+- Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
 - Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).
 - New admin pages go in `frontend/src/admin/` and get a route under `/admin` in `App.jsx`.

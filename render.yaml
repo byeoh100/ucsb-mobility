@@ -21,6 +21,13 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_EMAIL
         sync: false
+      # Your developer login for /django-admin/ (separate from Google sign-in).
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
 
 databases:
   - name: cart-dispatch-db

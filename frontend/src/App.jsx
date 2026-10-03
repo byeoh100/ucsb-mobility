@@ -1,11 +1,13 @@
 import { Navigate, Route, Routes } from "react-router";
 import DriversPage from "./admin/drivers/DriversPage.jsx";
 import Placeholder from "./admin/Placeholder.jsx";
+import RidesPage from "./admin/rides/RidesPage.jsx";
 import RequireRole from "./auth/RequireRole.jsx";
 import DriverHome from "./driver/DriverHome.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import RideLink from "./pages/RideLink.jsx";
 import SignIn from "./pages/SignIn.jsx";
 
 export default function App() {
@@ -14,6 +16,7 @@ export default function App() {
       {/* Public */}
       <Route path="/" element={<Home />} />
       <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/r/:token" element={<RideLink />} />
 
       {/* Admin profile (desktop) */}
       <Route
@@ -25,7 +28,7 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="rides" replace />} />
-        <Route path="rides" element={<Placeholder title="Rides">Today's rides will appear here.</Placeholder>} />
+        <Route path="rides" element={<RidesPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="archive" element={<Placeholder title="Archive">Archived rides will appear here.</Placeholder>} />
       </Route>

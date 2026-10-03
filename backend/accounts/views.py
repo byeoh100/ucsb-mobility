@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
-from .roles import Role, bootstrap_admin, get_role
+from .roles import bootstrap_admin, get_role
 from .validators import normalize_email
 
 log = logging.getLogger(__name__)
@@ -30,7 +30,12 @@ def session_payload(request):
     user = request.user
     payload = {
         "user": None,
-        "config": {"google_client_id": settings.GOOGLE_CLIENT_ID, "dev_login": settings.DEV_LOGIN},
+        "config": {
+            "google_client_id": settings.GOOGLE_CLIENT_ID,
+            "dev_login": settings.DEV_LOGIN,
+            # Ride times display in the campus time zone, whatever the viewer's device says.
+            "time_zone": settings.TIME_ZONE,
+        },
     }
     if user.is_authenticated:
         payload["user"] = {
@@ -42,19 +47,22 @@ def session_payload(request):
 
 
 def sign_in(request, email, first_name="", last_name=""):
+    """Start a session for a Google-verified email.
+
+    This never grants Django staff/superuser flags. Roles in the app come from
+    the admin and driver lists; the Django admin is for developer accounts only.
+    """
     email = normalize_email(email)
-    user, _ = User.objects.get_or_create(username=email, defaults={"email": email})
+    user, created = User.objects.get_or_create(username=email, defaults={"email": email})
+    if created:
+        # Google-only account: no password, so it can't be used at /django-admin/.
+        # (Only on creation, so an existing developer account keeps its password.)
+        user.set_unusable_password()
     user.email = email
     if first_name or last_name:
         user.first_name, user.last_name = first_name[:150], last_name[:150]
-    bootstrap_admin(email)
-    # Keep Django's own flags in step with the admin list so the raw-data
-    # admin at /django-admin/ works for admins. (Access is still re-checked
-    # against the list on every request.)
-    is_admin = get_role(user) == Role.ADMIN
-    user.is_staff = user.is_superuser = is_admin
-    user.set_unusable_password()
     user.save()
+    bootstrap_admin(email)
     login(request, user)
 
 

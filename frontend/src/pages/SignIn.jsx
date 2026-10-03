@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router";
 import { authApi } from "../api.js";
 import { homeForRole, useAuth } from "../auth/AuthProvider.jsx";
@@ -17,12 +17,6 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
 
   const target = user ? safeNext(params.get("next")) || homeForRole(user.role) : null;
-  // The Django admin isn't part of the React app, so it needs a full page load.
-  const leavesApp = target?.startsWith("/django-admin");
-
-  useEffect(() => {
-    if (leavesApp) window.location.assign(target);
-  }, [leavesApp, target]);
 
   // Once signed in, the render below redirects; this only handles errors.
   async function finish(promise) {
@@ -37,7 +31,7 @@ export default function SignIn() {
   }
 
   if (user === undefined) return <p className="page-status">Loading…</p>;
-  if (user) return leavesApp ? <p className="page-status">Opening…</p> : <Navigate to={target} replace />;
+  if (user) return <Navigate to={target} replace />;
 
   return (
     <MobileLayout title="Cart Dispatch">

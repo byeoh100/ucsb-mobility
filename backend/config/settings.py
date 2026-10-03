@@ -76,7 +76,10 @@ if DEV_LOGIN and not DEBUG:
 # --- Django ----------------------------------------------------------------
 
 INSTALLED_APPS = [
-    "config.apps.DispatchAdminConfig",  # Django's admin, gated by our admin email list
+    # Django's built-in admin at /django-admin/, stock behavior: only superusers
+    # created with `createsuperuser` (developers) can sign in. Dispatchers use
+    # the React admin pages and never get access to this.
+    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -85,6 +88,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "accounts",
+    "rides",
 ]
 
 MIDDLEWARE = [

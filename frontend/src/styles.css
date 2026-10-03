@@ -66,7 +66,7 @@ input {
 .tab:hover { background: var(--bg); }
 .tab.active { color: var(--accent); background: #e6eef6; }
 .account { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; }
-.admin-main { padding: 1.5rem; max-width: 1280px; width: 100%; margin: 0 auto; }
+.admin-main { padding: 1.5rem; max-width: 1680px; width: 100%; margin: 0 auto; }
 
 /* Mobile column (driver/rider). Phone-width with side bars on desktop. */
 .mobile-backdrop { min-height: 100dvh; background: #e3e6ea; }
@@ -172,3 +172,58 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .col-actions .button-quiet + .button-quiet { margin-left: 0.4rem; }
 .confirm-body p { margin: 0 0 0.5rem; }
 .confirm-body p:last-child { margin-bottom: 0; }
+
+/* Rides: date navigation */
+.date-nav { display: flex; align-items: center; gap: 0.5rem; }
+.icon-button { font-size: 1.2rem; line-height: 1; padding: 0.3rem 0.65rem; }
+.date-label { display: flex; flex-direction: column; align-items: center; min-width: 11rem; }
+.date-main { font-weight: 600; }
+.date-relative { font-size: 0.8rem; color: var(--muted); }
+.date-input { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+
+/* Rides: table. Fixed layout + shared column widths keep both tables aligned. */
+.ride-table { table-layout: fixed; min-width: 1180px; }
+.ride-table td { padding: 0.55rem 0.7rem; }
+.ride-table .c-time { width: 6.5rem; }
+.ride-table .c-rider { width: 10rem; }
+.ride-table .c-phone { width: 10.5rem; }
+.ride-table .c-place { width: 10.5rem; }
+.ride-table .c-driver { width: 9.5rem; }
+.ride-table .c-status { width: 10rem; }
+.ride-table .c-link { width: 8.25rem; }
+/* c-email has no width: it takes whatever room is left. */
+.ride-table td.email { overflow-wrap: anywhere; } /* last resort; normally breaks at the @ */
+.ride-table th { padding: 0; }
+.sort-button {
+  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
+  padding: 0.65rem 0.7rem; width: 100%; text-align: left; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+}
+.sort-button:hover { color: var(--text); }
+.sort-arrow { font-size: 0.65rem; opacity: 0; }
+.sort-button:hover .sort-arrow { opacity: 0.35; }
+.sort-arrow.active { opacity: 1; color: var(--accent); }
+.ride-table th:last-child { padding: 0.65rem 0.7rem; }
+.ride-table tr.is-completed td { color: var(--muted); }
+.swatch-small { width: 0.7rem; height: 0.7rem; margin-right: 0.45rem; }
+.status {
+  display: inline-block; font-size: 0.8rem; font-weight: 600;
+  padding: 0.15rem 0.55rem; border-radius: 999px; background: #eceef1; color: #4a5260;
+}
+.status-on_the_way { background: #e3f1e7; color: #1c6b35; }
+.status-completed { background: transparent; color: var(--muted); padding-left: 0; }
+.rider-confirmed { margin-left: 0.4rem; }
+.link-cell { display: inline-flex; align-items: center; gap: 0.5rem; }
+.button-small { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+
+/* Rides: unassigned bar */
+.unassigned { display: flex; flex-direction: column; gap: 0.6rem; }
+.unassigned-bar {
+  font: inherit; display: flex; justify-content: space-between; align-items: center;
+  width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-weight: 600;
+}
+.unassigned.has-rides .unassigned-bar { background: #fff6e0; border-color: #ecd9a6; color: #6b4e00; }
+.unassigned-bar:disabled { cursor: default; }
+.chevron { transition: transform 0.15s; }
+.chevron.open { transform: rotate(180deg); }
