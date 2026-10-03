@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ridesApi } from "../api.js";
-import CampusMap from "../components/CampusMap.jsx";
+import CampusMap, { LocationDot } from "../components/CampusMap.jsx";
 import { STATUS_LABELS } from "../admin/rides/RideTable.jsx";
 import { formatPhone } from "../lib/phone.js";
 import { formatTime } from "../lib/time.js";
@@ -17,7 +17,9 @@ import { formatTime } from "../lib/time.js";
 //   highlight   "current" | "next" | undefined, for emphasis
 //   mapOpen     show the map right away (only the top card does, so the
 //               screen isn't two full-size maps tall)
-export default function RideCard({ ride, mine, canStart, timeZone, onChanged, highlight, mapOpen = false }) {
+//   you         { x, y, onMap } the driver's own position on the map, if known
+//   sharing     location-sharing state, shown on the ride that's on the way
+export default function RideCard({ ride, mine, canStart, timeZone, onChanged, highlight, mapOpen = false, you, sharing }) {
   const [busy, setBusy] = useState(false);
   const [showMap, setShowMap] = useState(mapOpen);
   const [error, setError] = useState("");
@@ -75,8 +77,16 @@ export default function RideCard({ ride, mine, canStart, timeZone, onChanged, hi
         )}
       </dl>
 
+      {sharing && <SharingStatus state={sharing} />}
+
       {showMap ? (
-        <CampusMap pickup={ride.pickup_pin} dropoff={ride.dropoff_pin} />
+        <CampusMap
+          pickup={ride.pickup_pin}
+          dropoff={ride.dropoff_pin}
+          note={you && !you.onMap ? "You're outside the map area." : null}
+        >
+          {you?.onMap && <LocationDot point={you} label="You" />}
+        </CampusMap>
       ) : (
         <button className="button-quiet show-map" onClick={() => setShowMap(true)}>
           Show map{ride.pickup_pin || ride.dropoff_pin ? " (rider marked spots)" : ""}
@@ -104,4 +114,18 @@ export default function RideCard({ ride, mine, canStart, timeZone, onChanged, hi
       {error && <p className="error" role="alert">{error}</p>}
     </article>
   );
+}
+
+const SHARING_MESSAGES = {
+  locating: ["muted", "Finding your location…"],
+  slow: ["warn", "Still finding your location. If your phone asked to share your location, tap Allow."],
+  sharing: ["ok", "Sharing your location with the rider"],
+  denied: ["warn", "Location is blocked. Allow location for this site so your rider can see you coming."],
+  unavailable: ["warn", "Can't get your location right now. Your rider will still see that you're on the way."],
+};
+
+function SharingStatus({ state }) {
+  const message = SHARING_MESSAGES[state];
+  if (!message) return null;
+  return <p className={`sharing-status sharing-${message[0]}`} role="status">{message[1]}</p>;
 }

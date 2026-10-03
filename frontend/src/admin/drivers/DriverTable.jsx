@@ -1,4 +1,6 @@
+import { ageLabel } from "../../lib/geo.js";
 import { formatPhone } from "../../lib/phone.js";
+import { formatTime } from "../../lib/time.js";
 
 // List of drivers with Edit and Remove actions per row.
 //
@@ -7,7 +9,7 @@ import { formatPhone } from "../../lib/phone.js";
 //   colors    array of { value, label }, used to name each driver's color
 //   onEdit    (driver) => void
 //   onRemove  (driver) => void
-export default function DriverTable({ drivers, colors, onEdit, onRemove }) {
+export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZone }) {
   const colorName = Object.fromEntries(colors.map((c) => [c.value, c.label]));
 
   if (drivers.length === 0) {
@@ -47,8 +49,9 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove }) {
               <td className="strong">{d.name}</td>
               <td>{d.email}</td>
               <td className="nowrap">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
-              {/* Filled in once rides exist. */}
-              <td className="muted">—</td>
+              <td>
+                <CurrentRide ride={d.current_ride} location={d.location} timeZone={timeZone} />
+              </td>
               <td className="col-actions">
                 <button className="button-quiet" onClick={() => onEdit(d)} aria-label={`Edit ${d.name}`}>
                   Edit
@@ -66,5 +69,32 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+// What the driver is doing right now: their ride that's on the way, and how
+// fresh their location is. The rider link shows where they are on the map.
+function CurrentRide({ ride, location, timeZone }) {
+  if (!ride) return <span className="muted">—</span>;
+  return (
+    <span className="current-ride">
+      <span>
+        <strong>{ride.rider_name}</strong> · {formatTime(ride.pickup_time, timeZone)}
+      </span>
+      <span className="current-ride-route">
+        {ride.pickup_name} → {ride.dropoff_name}
+      </span>
+      <span className={`current-ride-location${location?.live ? " live" : ""}`}>
+        {location ? (
+          <>
+            {location.live ? "● Location live" : `Location ${ageLabel(location.age_seconds)}`}
+            {!location.on_map && " (off map)"} ·{" "}
+          </>
+        ) : (
+          <span className="muted">No location yet · </span>
+        )}
+        <a href={`/r/${ride.link_token}`} target="_blank" rel="noreferrer">Rider page</a>
+      </span>
+    </span>
   );
 }

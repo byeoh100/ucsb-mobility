@@ -1,0 +1,13 @@
+{
+  "_about": "Landmarks that tie the campus map image (frontend/src/assets/campus-map.jpg) to GPS. x/y are pixels in the image; lat/lng from a reliable source. More points spread across the map = better accuracy. Check the fit with: python manage.py map_calibration",
+  "image": { "width": 719, "height": 881 },
+  "points": [
+    { "name": "Storke Tower", "x": 288, "y": 565, "lat": 34.41264, "lng": -119.848396 },
+    { "name": "Mosher Alumni House", "x": 428, "y": 266, "lat": 34.41733, "lng": -119.845516 },
+    { "name": "Humanities and Social Sciences Building", "x": 185, "y": 515, "lat": 34.413605, "lng": -119.850647 }
+  ],
+  "_excluded": [
+    { "name": "Bren Hall", "x": 597, "y": 523, "lat": 34.4121139, "lng": -119.8420139,
+      "why": "Disagreed with the others by 4-13 degrees in direction; its map label likely isn't centered on the building." }
+  ]
+}

@@ -166,6 +166,36 @@ def archived_response():
     return error("This ride is archived and can't be changed.")
 
 
+class LocationView(APIView):
+    """POST /api/location/  {"lat", "lng", "accuracy"}: the driver's phone reporting in.
+
+    Only accepted while the driver has a ride on the way. Otherwise it answers
+    409 with {"sharing": false}, and the phone stops sending.
+    """
+
+    permission_classes = [IsDriverOrAdmin]
+
+    def post(self, request):
+        from .models import DriverLocation
+        from .tracking import current_ride
+
+        driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+        if driver is None:
+            return error("Only drivers share their location.", status.HTTP_403_FORBIDDEN)
+        if current_ride(driver) is None:
+            return Response({"sharing": False, "error": "No ride on the way."}, status=status.HTTP_409_CONFLICT)
+        try:
+            lat, lng = float(request.data["lat"]), float(request.data["lng"])
+            accuracy = request.data.get("accuracy")
+            accuracy = float(accuracy) if accuracy is not None else None
+        except (KeyError, TypeError, ValueError):
+            return error("Send lat and lng as numbers.")
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            return error("That isn't a valid location.")
+        DriverLocation.objects.update_or_create(driver=driver, defaults={"lat": lat, "lng": lng, "accuracy_m": accuracy})
+        return Response({"sharing": True})
+
+
 class ArchiveDaysView(APIView):
     """GET /api/archive/days/: which days have archived rides (newest first).
 

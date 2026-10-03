@@ -3,9 +3,11 @@ import { useSearchParams } from "react-router";
 import { ridesApi } from "../api.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import MobileLayout from "../layouts/MobileLayout.jsx";
+import { toMapPoint } from "../lib/geo.js";
 import { formatDayLabel, isValidDate, shiftDate, todayIn } from "../lib/time.js";
 import RideCard from "./RideCard.jsx";
 import RideRow from "./RideRow.jsx";
+import useLocationSharing from "./useLocationSharing.js";
 
 const REFRESH_MS = 30_000;
 
@@ -76,6 +78,10 @@ export default function DriverHome() {
   const current = isToday ? mine.find((r) => r.status === "on_the_way") : null;
   const next = isToday ? mine.find((r) => r.status === "not_confirmed" && r !== current) : null;
   const later = mine.filter((r) => r !== current && r !== next && r.status !== "completed");
+
+  // Share GPS only while a ride is on the way; also drives the "You" dot.
+  const { position, state: sharing } = useLocationSharing(Boolean(current));
+  const you = position ? toMapPoint(position, config.map_calibration) : null;
   const done = mine.filter((r) => r.status === "completed");
 
   return (
@@ -114,7 +120,7 @@ export default function DriverHome() {
               <section className="stack">
                 <h2 className="section-title">On the way</h2>
                 {/* key: a different ride gets a fresh card (map, errors), not the old one's state */}
-                <RideCard key={current.id} {...cardProps(current)} highlight="current" mapOpen />
+                <RideCard key={current.id} {...cardProps(current)} highlight="current" mapOpen you={you} sharing={sharing} />
               </section>
             )}
             {next && (

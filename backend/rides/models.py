@@ -60,3 +60,21 @@ class Ride(models.Model):
 
     def __str__(self):
         return f"{self.rider_name} · {self.pickup_name} → {self.dropoff_name}"
+
+
+class DriverLocation(models.Model):
+    """A driver's latest GPS fix, sent by their phone while a ride is on the way.
+
+    Only the most recent position is kept (one row per driver, overwritten).
+    It's only ever shown while the driver has a ride on the way; see
+    rides/tracking.py.
+    """
+
+    driver = models.OneToOneField("accounts.Driver", on_delete=models.CASCADE, related_name="location")
+    lat = models.FloatField()
+    lng = models.FloatField()
+    accuracy_m = models.FloatField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.driver} @ {self.lat:.5f}, {self.lng:.5f}"

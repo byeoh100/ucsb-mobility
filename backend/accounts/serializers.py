@@ -21,9 +21,33 @@ class DriverSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=True)
     color = serializers.ChoiceField(choices=DRIVER_COLORS)
 
+    # For dispatch: what the driver is doing right now (read-only).
+    current_ride = serializers.SerializerMethodField()
+    location = serializers.SerializerMethodField()
+
     class Meta:
         model = Driver
-        fields = ["id", "email", "name", "phone", "color"]
+        fields = ["id", "email", "name", "phone", "color", "current_ride", "location"]
+
+    def get_current_ride(self, driver):
+        from rides.tracking import current_ride
+
+        ride = current_ride(driver)
+        if ride is None:
+            return None
+        return {
+            "id": ride.id,
+            "rider_name": ride.rider_name,
+            "pickup_time": ride.pickup_time.isoformat(),
+            "pickup_name": ride.pickup_name,
+            "dropoff_name": ride.dropoff_name,
+            "link_token": ride.link_token,
+        }
+
+    def get_location(self, driver):
+        from rides.tracking import location_payload
+
+        return location_payload(driver)
 
     def validate_email(self, value):
         email = normalize_email(value)

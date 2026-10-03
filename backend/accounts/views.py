@@ -20,6 +20,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
 from rides.archive import ARCHIVE_HOUR
+from rides.geo import frontend_calibration
 
 from .models import Driver
 from .roles import bootstrap_admin, get_role
@@ -41,6 +42,8 @@ def session_payload(request):
             # Rides move to the archive at this hour the next morning.
             "archive_hour": ARCHIVE_HOUR,
             "archive_retention_days": settings.ARCHIVE_RETENTION_DAYS,
+            # For drawing the driver's own GPS on the campus map (see rides/geo.py).
+            "map_calibration": frontend_calibration(),
         },
     }
     if user.is_authenticated:

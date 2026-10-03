@@ -72,3 +72,7 @@ export const archiveApi = {
   days: () => request("/archive/days/"),
   list: (date) => request(`/archive/?date=${encodeURIComponent(date)}`),
 };
+
+export const locationApi = {
+  send: ({ lat, lng, accuracy }) => request("/location/", { method: "POST", body: { lat, lng, accuracy } }),
+};

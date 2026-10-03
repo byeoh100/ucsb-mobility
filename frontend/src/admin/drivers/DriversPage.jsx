@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { driversApi } from "../../api.js";
+import { useAuth } from "../../auth/AuthProvider.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import Modal from "../../components/Modal.jsx";
 import DriverForm from "./DriverForm.jsx";
@@ -7,6 +8,7 @@ import DriverTable from "./DriverTable.jsx";
 
 // Admin → Drivers. Owns the data; child components display and edit it.
 export default function DriversPage() {
+  const { config } = useAuth();
   const [drivers, setDrivers] = useState(null); // null = loading
   const [colors, setColors] = useState([]);
   const [error, setError] = useState("");
@@ -25,8 +27,16 @@ export default function DriversPage() {
     }
   }, []);
 
+  // Refresh every 30 seconds while visible, so "Current ride" stays current.
   useEffect(() => {
     load();
+    const refresh = () => document.visibilityState === "visible" && load();
+    const timer = setInterval(refresh, 30_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [load]);
 
   const allColorsTaken = drivers && colors.length > 0 && drivers.length >= colors.length;
@@ -57,6 +67,7 @@ export default function DriversPage() {
         <DriverTable
           drivers={drivers}
           colors={colors}
+          timeZone={config.time_zone}
           onEdit={(driver) => setEditing({ driver })}
           onRemove={setRemoving}
         />

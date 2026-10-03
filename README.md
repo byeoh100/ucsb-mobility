@@ -2,7 +2,7 @@
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
-**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), admin → Archive, and the driver view (My/All rides, Up next, On the way with Undo, tap-to-call, campus map with the rider's pins). Driver location sharing and the rider page come next.
+**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation), admin → Archive, and the driver view (My/All rides, Up next, On the way with Undo, tap-to-call, campus map with the rider's pins). Drivers share their location while a ride is on the way (shown as a dot on the campus map; dispatch sees it on the Drivers page). The rider page comes next.
 
 ## How roles work
 
@@ -45,6 +45,7 @@ frontend/src/
 | `/api/drivers/` | driver list, add, edit, remove (admins only) |
 | `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
+| `/api/location/` | driver's phone reporting GPS (only accepted while a ride is on the way) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
 | `/r/<token>` | a rider's page for one ride (placeholder) |
 | `/django-admin/` | Django's raw data editor, developers only (see below) |
@@ -57,7 +58,7 @@ You need Python 3.12+ and Node 20.19+ (or 22.12+).
 
 ```bash
 cd backend
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                   # Windows: copy .env.example .env
@@ -87,6 +88,20 @@ Open http://localhost:5173 and use **Development sign-in** with your bootstrap e
 **Tests:** `python manage.py test` in `backend/`.
 
 `.env` is git-ignored and only for your machine. In production, set the same variables on the host instead (Render's dashboard), which take priority over any file.
+
+## Campus map calibration
+
+Driver locations are GPS; the map is a picture. `backend/rides/map_calibration.json` lists landmarks as *pixel position on the image* ↔ *GPS*, and `rides/geo.py` fits a scale + slight rotation + shift to them. It currently has 3 landmarks (about 5–15 m each), which is a starter calibration.
+
+To improve it, add points at features you can pinpoint on the image, like path intersections or building corners. Spread them across the map, especially the east and south edges:
+
+1. Find the pixel position on `frontend/src/assets/campus-map.jpg` (most image viewers show cursor coordinates).
+2. Right-click the same spot in Google Maps to copy its latitude/longitude.
+3. Add `{ "name", "x", "y", "lat", "lng" }` to `points`, then run `python manage.py map_calibration`. It reports each point's error and flags any that disagree with the rest. Restart the server to use the new fit.
+
+The real-world test is walking around campus with the driver view open on a ride: the blue "You" dot should follow you.
+
+**Testing on a real phone:** browsers only share location over HTTPS (or `localhost`). Opening your laptop's `http://192.168.x.x:5173` on a phone won't work; use the deployed site, or a tunnel like ngrok for development.
 
 ## Developer access (`/django-admin/`)
 
@@ -158,6 +173,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
+- Location privacy: phones send GPS only while their driver has a ride on the way; the server keeps just the latest fix per driver and only shows it during that ride, and only ever as a position on the map image (raw GPS never leaves the server). The phone's screen is kept awake while sharing, since browsers pause GPS when it locks.
 - `components/CampusMap.jsx` draws the campus image with the rider's pins (tips anchored exactly on the stored point); the rider page will reuse it.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
 - Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).

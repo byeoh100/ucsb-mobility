@@ -5,8 +5,8 @@ import mapUrl from "../assets/campus-map.jpg";
 // land in the same place at any size. Shared by the driver view and the
 // rider page; `children` can add overlays (e.g. the driver's location, later).
 //
-// Props: pickup, dropoff ({ x, y } or null), children
-export default function CampusMap({ pickup, dropoff, children }) {
+// Props: pickup, dropoff ({ x, y } or null), children, note (extra caption text)
+export default function CampusMap({ pickup, dropoff, children, note }) {
   const hasPins = Boolean(pickup || dropoff);
   return (
     <figure className="campus-map">
@@ -25,6 +25,7 @@ export default function CampusMap({ pickup, dropoff, children }) {
         ) : (
           <span className="muted">The rider hasn't marked spots on the map.</span>
         )}
+        {note && <span className="campus-map-note">{note}</span>}
       </figcaption>
     </figure>
   );
@@ -44,5 +45,21 @@ export function Pin({ point, kind, label }) {
       <path d="M12 1C5.9 1 1 5.9 1 12c0 8.3 11 19 11 19s11-10.7 11-19C23 5.9 18.1 1 12 1z" />
       <text x="12" y="16" textAnchor="middle">{kind === "pickup" ? "P" : "D"}</text>
     </svg>
+  );
+}
+
+// A live position (the driver) on the map: a dot with a soft pulse.
+// point: { x, y } as fractions of the image.
+export function LocationDot({ point, label, stale = false }) {
+  return (
+    <span
+      className={`location-dot${stale ? " stale" : ""}`}
+      style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <span className="location-dot-label">{label}</span>
+    </span>
   );
 }
