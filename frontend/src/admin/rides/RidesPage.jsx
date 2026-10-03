@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { ridesApi } from "../../api.js";
+import { driversApi, ridesApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import ConfirmDialog from "../../components/ConfirmDialog.jsx";
+import Modal from "../../components/Modal.jsx";
 import { isValidDate, todayIn } from "../../lib/time.js";
+
+import { campusParts, formatTime } from "../../lib/time.js";
 import DateNav from "./DateNav.jsx";
+import RideForm from "./RideForm.jsx";
 import RideTable from "./RideTable.jsx";
 import UnassignedRides from "./UnassignedRides.jsx";
 
@@ -23,6 +28,15 @@ export default function RidesPage() {
   const [rides, setRides] = useState(null); // null = loading
   const [error, setError] = useState("");
   const [sort, setSort] = useState({ key: "time", dir: "asc" });
+  const [drivers, setDrivers] = useState([]);
+  // null = form closed, { ride: null } = adding, { ride } = editing
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null); // ride pending deletion
+
+  // Drivers for the form's dropdown.
+  useEffect(() => {
+    driversApi.list().then(setDrivers).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -48,7 +62,20 @@ export default function RidesPage() {
 
   const unassigned = rides?.filter((r) => !r.driver) ?? [];
   const assigned = rides?.filter((r) => r.driver) ?? [];
-  const tableProps = { timeZone, sort, onSort: setSort };
+  const tableProps = {
+    timeZone,
+    sort,
+    onSort: setSort,
+    onEdit: (ride) => setEditing({ ride }),
+  };
+
+  function handleSaved(saved) {
+    setEditing(null);
+    // If the ride landed on another day, go there so it's visible.
+    const savedDate = campusParts(saved.pickup_time, timeZone).date;
+    if (savedDate !== date) setDate(savedDate);
+    else load();
+  }
 
   return (
     <section className="stack">
@@ -56,7 +83,12 @@ export default function RidesPage() {
         <h1>
           Rides {rides && <span className="count">{rides.length}</span>}
         </h1>
-        <DateNav date={date} today={today} onChange={setDate} />
+        <div className="page-actions">
+          <DateNav date={date} today={today} onChange={setDate} />
+          <button className="button" onClick={() => setEditing({ ride: null })}>
+            + Add ride
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -78,6 +110,58 @@ export default function RidesPage() {
           )}
         </>
       )}
+
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={editing?.ride ? `Edit ride for ${editing.ride.rider_name}` : "Add ride"}
+        wide
+      >
+        {editing && (
+          <RideForm
+            key={editing.ride?.id ?? "new"}
+            ride={editing.ride}
+            defaultDate={date < today ? today : date}
+            today={today}
+            drivers={drivers}
+            timeZone={timeZone}
+            onCancel={() => setEditing(null)}
+            onSaved={handleSaved}
+            onDelete={(ride) => {
+              // Swap the edit dialog for the confirmation.
+              setEditing(null);
+              setDeleting(ride);
+            }}
+          />
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title={deleting ? `Delete ride for ${deleting.rider_name}?` : ""}
+        confirmLabel="Delete ride"
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          try {
+            await ridesApi.remove(deleting.id);
+          } catch (err) {
+            // Already gone (e.g. deleted in another tab): that's what we wanted.
+            if (err.status !== 404) throw err;
+          }
+          await load();
+        }}
+      >
+        {deleting && (
+          <>
+            <p>
+              <strong>{formatTime(deleting.pickup_time, timeZone)}</strong> · {deleting.pickup_name} →{" "}
+              {deleting.dropoff_name}
+              {deleting.driver_name && <> · {deleting.driver_name}</>}
+            </p>
+            <p className="muted">The rider's link will stop working. This can't be undone.</p>
+          </>
+        )}
+      </ConfirmDialog>
     </section>
   );
 }

@@ -18,18 +18,23 @@ from django.utils import timezone
 from accounts.models import Driver
 from rides.models import Ride
 
-# Approximate pins; real ones get dropped on the map by dispatch.
+# Buildings and where they sit on the campus map image (fraction across,
+# fraction down), estimated from the map's labels. Used for demo pins.
+W, H = 719, 881
 PLACES = [
-    ("Davidson Library", 34.41340, -119.84560),
-    ("Campbell Hall", 34.41660, -119.84480),
-    ("Phelps Hall", 34.41610, -119.84440),
-    ("Engineering II", 34.41410, -119.84120),
-    ("UCen", 34.41160, -119.84860),
-    ("Student Resource Building", 34.41230, -119.84780),
-    ("Rec Cen", 34.41850, -119.85070),
-    ("Psychology Building", 34.41210, -119.84500),
-    ("Music Building", 34.41290, -119.84960),
-    ("Manzanita Village", 34.40960, -119.85360),
+    ("Davidson Library", 428 / W, 483 / H),
+    ("Campbell Hall", 440 / W, 330 / H),
+    ("Bren Hall", 590 / W, 523 / H),
+    ("Recreation Center", 235 / W, 220 / H),
+    ("Student Resource Building", 65 / W, 555 / H),
+    ("Humanities and Social Sciences Building", 185 / W, 505 / H),
+    ("Interactive Learning Pavilion", 435 / W, 560 / H),
+    ("Storke Tower", 290 / W, 565 / H),
+    ("Anacapa Hall", 565 / W, 658 / H),
+    ("San Nicolas Hall", 370 / W, 746 / H),
+    ("Santa Cruz Hall", 525 / W, 725 / H),
+    ("Pollock Theater", 265 / W, 413 / H),
+    ("Manzanita Village", 90 / W, 740 / H),
 ]
 
 DRIVERS = [
@@ -85,10 +90,14 @@ class Command(BaseCommand):
                 rider_phone=f"805555{1000 + i:04d}",
                 rider_email=f"{first.lower()}{last.lower()}@umail.ucsb.edu",
                 pickup_time=pickup_time,
-                pickup_name=start[0], pickup_lat=start[1], pickup_lng=start[2],
-                dropoff_name=end[0], dropoff_lat=end[1], dropoff_lng=end[2],
+                pickup_name=start[0],
+                dropoff_name=end[0],
                 driver=driver,
             )
+            # Pins are optional; about half of demo riders "placed" them.
+            if rng.random() < 0.5:
+                ride.pickup_x, ride.pickup_y = start[1], start[2]
+                ride.dropoff_x, ride.dropoff_y = end[1], end[2]
             # Make rides around "now" look in progress.
             if driver and timedelta(minutes=-15) < pickup_time - now < timedelta(minutes=15):
                 ride.started_at = now - timedelta(minutes=2)

@@ -23,13 +23,17 @@ class Ride(models.Model):
 
     pickup_time = models.DateTimeField()
 
-    # Places: a name students recognize, plus a required map pin.
+    # Places, as names students recognize (entered by dispatch).
     pickup_name = models.CharField(max_length=120)
-    pickup_lat = models.DecimalField(max_digits=9, decimal_places=6)
-    pickup_lng = models.DecimalField(max_digits=9, decimal_places=6)
     dropoff_name = models.CharField(max_length=120)
-    dropoff_lat = models.DecimalField(max_digits=9, decimal_places=6)
-    dropoff_lng = models.DecimalField(max_digits=9, decimal_places=6)
+
+    # Optional pins the rider drags onto the campus map on their ride page.
+    # Stored as fractions of the image (0 = left/top, 1 = right/bottom), so
+    # they land in the same spot at any display size.
+    pickup_x = models.FloatField(null=True, blank=True)
+    pickup_y = models.FloatField(null=True, blank=True)
+    dropoff_x = models.FloatField(null=True, blank=True)
+    dropoff_y = models.FloatField(null=True, blank=True)
 
     # Removing a driver leaves their rides unassigned.
     driver = models.ForeignKey(

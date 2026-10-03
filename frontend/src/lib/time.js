@@ -32,3 +32,22 @@ export function formatDayLabel(isoDate) {
 export function formatTime(isoDateTime, timeZone) {
   return new Date(isoDateTime).toLocaleTimeString("en-US", { timeZone, hour: "numeric", minute: "2-digit" });
 }
+
+// Split a stored ride time into campus-local parts for form inputs:
+// { date: "2026-10-03", time: "09:30" }
+export function campusParts(isoDateTime, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(isoDateTime))
+      .map((p) => [p.type, p.value])
+  );
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}

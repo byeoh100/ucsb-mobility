@@ -170,6 +170,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .button-quiet-danger { color: var(--danger); }
 .button-quiet-danger:hover { border-color: var(--danger); }
 .col-actions .button-quiet + .button-quiet { margin-left: 0.4rem; }
+.modal-actions .actions-left { margin-right: auto; }
 .confirm-body p { margin: 0 0 0.5rem; }
 .confirm-body p:last-child { margin-bottom: 0; }
 
@@ -182,16 +183,18 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .date-input { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
 
 /* Rides: table. Fixed layout + shared column widths keep both tables aligned. */
-.ride-table { table-layout: fixed; min-width: 1180px; }
+.ride-table { table-layout: fixed; min-width: 85.5rem; } /* = fixed columns + 9rem for email */
 .ride-table td { padding: 0.55rem 0.7rem; }
-.ride-table .c-time { width: 6.5rem; }
-.ride-table .c-rider { width: 10rem; }
+.ride-table .c-time { width: 6rem; }
+.ride-table .c-rider { width: 9.5rem; }
 .ride-table .c-phone { width: 10.5rem; }
-.ride-table .c-place { width: 10.5rem; }
-.ride-table .c-driver { width: 9.5rem; }
+.ride-table .c-place { width: 9.75rem; }
+.ride-table .c-driver { width: 9rem; }
 .ride-table .c-status { width: 10rem; }
-.ride-table .c-link { width: 8.25rem; }
-/* c-email has no width: it takes whatever room is left. */
+.ride-table .c-link { width: 7.5rem; }
+.ride-table .c-actions { width: 4.5rem; }
+/* c-email has no width: it takes the rest. The table's min-width guarantees
+   it at least 9rem; below that the table scrolls instead of crushing it. */
 .ride-table td.email { overflow-wrap: anywhere; } /* last resort; normally breaks at the @ */
 .ride-table th { padding: 0; }
 .sort-button {
@@ -227,3 +230,22 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .unassigned-bar:disabled { cursor: default; }
 .chevron { transition: transform 0.15s; }
 .chevron.open { transform: rotate(180deg); }
+
+/* Rides: header actions, edit column */
+.page-actions { display: flex; align-items: center; gap: 1rem; }
+
+
+/* Wider modal + form layout for rides */
+dialog.modal.modal-wide { width: min(620px, calc(100vw - 2rem)); }
+.form-section { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+.form-section legend {
+  padding: 0; margin-bottom: 0.6rem; font-size: 0.8rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+select {
+  font: inherit; font-weight: 400; padding: 0.6rem 0.75rem; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--surface); color: var(--text); flex: 1;
+}
+.driver-select { display: flex; align-items: center; gap: 0.6rem; }
+.driver-select .swatch { width: 1.2rem; height: 1.2rem; flex: none; }

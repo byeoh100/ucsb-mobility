@@ -22,6 +22,11 @@ def django_to_drf(func, value):
         raise serializers.ValidationError(err.messages)
 
 
+def pin(x, y):
+    """{"x": 0.42, "y": 0.61}, or None if the rider hasn't placed it."""
+    return {"x": x, "y": y} if x is not None and y is not None else None
+
+
 class RideSerializer(serializers.ModelSerializer):
     # Writes take a driver id (or null); reads add the name and color.
     driver = serializers.PrimaryKeyRelatedField(queryset=Driver.objects.all(), allow_null=True, required=False)
@@ -32,10 +37,9 @@ class RideSerializer(serializers.ModelSerializer):
     # it to 10 digits (the model's 10-character limit would reject it first).
     rider_phone = serializers.CharField()
 
-    pickup_lat = serializers.FloatField(min_value=-90, max_value=90)
-    pickup_lng = serializers.FloatField(min_value=-180, max_value=180)
-    dropoff_lat = serializers.FloatField(min_value=-90, max_value=90)
-    dropoff_lng = serializers.FloatField(min_value=-180, max_value=180)
+    # Pins are set by the rider on their ride page, so dispatch only reads them.
+    pickup_pin = serializers.SerializerMethodField()
+    dropoff_pin = serializers.SerializerMethodField()
 
     status = serializers.SerializerMethodField()
     rider_confirmed = serializers.SerializerMethodField()
@@ -49,11 +53,9 @@ class RideSerializer(serializers.ModelSerializer):
             "rider_email",
             "pickup_time",
             "pickup_name",
-            "pickup_lat",
-            "pickup_lng",
             "dropoff_name",
-            "dropoff_lat",
-            "dropoff_lng",
+            "pickup_pin",
+            "dropoff_pin",
             "driver",
             "driver_name",
             "driver_color",
@@ -68,6 +70,12 @@ class RideSerializer(serializers.ModelSerializer):
     def get_status(self, ride):
         # The view computes all statuses in one pass and passes them in.
         return self.context.get("statuses", {}).get(ride.id)
+
+    def get_pickup_pin(self, ride):
+        return pin(ride.pickup_x, ride.pickup_y)
+
+    def get_dropoff_pin(self, ride):
+        return pin(ride.dropoff_x, ride.dropoff_y)
 
     def get_rider_confirmed(self, ride):
         return ride.rider_confirmed_at is not None

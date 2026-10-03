@@ -41,7 +41,8 @@ export function sortRides(rides, { key, dir }) {
 //   rides      rides to show (already filtered)
 //   timeZone   campus time zone for displaying times
 //   sort       { key, dir } and onSort(nextSort), shared so both tables sort alike
-export default function RideTable({ rides, timeZone, sort, onSort }) {
+//   onEdit     (ride) => void   (deleting happens from the edit dialog)
+export default function RideTable({ rides, timeZone, sort, onSort, onEdit }) {
   const columns = COLUMNS;
   const sorted = sortRides(rides, sort);
 
@@ -57,6 +58,7 @@ export default function RideTable({ rides, timeZone, sort, onSort }) {
             <col key={c.key} className={c.className} />
           ))}
           <col className="c-link" />
+          <col className="c-actions" />
         </colgroup>
         <thead>
           <tr>
@@ -74,6 +76,7 @@ export default function RideTable({ rides, timeZone, sort, onSort }) {
               );
             })}
             <th>Rider link</th>
+            <th><span className="visually-hidden">Actions</span></th>
           </tr>
         </thead>
         <tbody>
@@ -115,6 +118,11 @@ export default function RideTable({ rides, timeZone, sort, onSort }) {
               </td>
               <td className="nowrap">
                 <RideLinkCell token={r.link_token} />
+              </td>
+              <td className="col-actions">
+                <button className="button-quiet button-small" onClick={() => onEdit(r)} aria-label={`Edit ride for ${r.rider_name}`}>
+                  Edit
+                </button>
               </td>
             </tr>
           ))}

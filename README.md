@@ -2,7 +2,7 @@
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
-**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides day view (date switcher, sortable color-coded table, unassigned bar). The ride form, ride deletion, Archive, and the driver/rider views come in later parts.
+**Built so far:** Google sign-in, role lists, page shells, admin → Drivers (complete), and admin → Rides (day view with date switcher, sortable color-coded table, unassigned bar; add/edit form; delete from the edit dialog with confirmation). Archive and the driver/rider views come in later parts.
 
 ## How roles work
 
@@ -151,6 +151,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - API views use `accounts.permissions.IsAdmin` or `IsDriverOrAdmin`.
 - Phone numbers are stored as 10 digits (`common/phone.py`). `frontend/src/lib/phone.js` formats them as (805) - 555 - 0123, and `components/PhoneInput.jsx` is the typing-as-you-go input; reuse it for rider phones.
 - Ride status is computed, never stored (`rides/status.py`): *completed* 15 min after pickup or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
+- Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
 - Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).

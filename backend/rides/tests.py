@@ -26,7 +26,7 @@ class StatusTests(TestCase):
         return Ride.objects.create(
             rider_name="R", rider_phone="8055550000", rider_email="r@ucsb.edu",
             pickup_time=local(self.day, hour, minute),
-            pickup_name="A", pickup_lat=1, pickup_lng=1, dropoff_name="B", dropoff_lat=2, dropoff_lng=2,
+            pickup_name="A", dropoff_name="B",
             driver=self.driver if driver else None, started_at=started,
         )
 
@@ -65,8 +65,7 @@ class RideApiTests(TestCase):
         data = {
             "rider_name": "Alex Kim", "rider_phone": "(805) 555-0101", "rider_email": "Alex@UMAIL.ucsb.edu",
             "pickup_time": f"{self.tomorrow}T09:30", "pickup_name": "Library",
-            "pickup_lat": 34.4134, "pickup_lng": -119.8456,
-            "dropoff_name": "Phelps Hall", "dropoff_lat": 34.4161, "dropoff_lng": -119.8444,
+            "dropoff_name": "Phelps Hall",
             "driver": self.driver.id,
         }
         data.update(overrides)
@@ -94,6 +93,29 @@ class RideApiTests(TestCase):
         ride = Ride.objects.get()
         self.assertEqual(timezone.localtime(ride.pickup_time).time(), time(9, 30))
 
+    def test_pins_optional_and_read_only_for_dispatch(self):
+        r = self.create(pickup_pin={"x": 0.5, "y": 0.5})  # ignored: riders set pins
+        self.assertEqual(r.status_code, 201)
+        self.assertIsNone(r.json()["pickup_pin"])
+        ride = Ride.objects.get()
+        ride.pickup_x, ride.pickup_y = 0.25, 0.75
+        ride.save()
+        listed = self.client.get(f"/api/rides/?date={self.tomorrow}").json()[0]
+        self.assertEqual(listed["pickup_pin"], {"x": 0.25, "y": 0.75})
+        self.assertIsNone(listed["dropoff_pin"])
+
+    def test_edit_keeps_past_time_but_rejects_moving_into_past(self):
+        ride_id = self.create().json()["id"]
+        ride = Ride.objects.get()
+        ride.pickup_time = local(timezone.localdate() - timedelta(days=1), 10)  # pretend it was yesterday
+        ride.save()
+        same = self.client.patch(f"/api/rides/{ride_id}/", {"pickup_time": timezone.localtime(ride.pickup_time).isoformat(),
+                                 "driver": None}, content_type="application/json")
+        self.assertEqual(same.status_code, 200, same.json())
+        moved = self.client.patch(f"/api/rides/{ride_id}/", {"pickup_time": f"{timezone.localdate() - timedelta(days=1)}T11:00"},
+                                  content_type="application/json")
+        self.assertEqual(moved.status_code, 400)
+
     def test_unassigned_allowed(self):
         r = self.create(driver=None)
         self.assertEqual(r.status_code, 201)
@@ -107,7 +129,6 @@ class RideApiTests(TestCase):
             "past date": {"pickup_time": f"{yesterday}T09:00"},
             "bad phone": {"rider_phone": "555-0101"},
             "non-UCSB email": {"rider_email": "alex@gmail.com"},
-            "missing pin": {"pickup_lat": None},
             "blank place": {"dropoff_name": "  "},
             "unknown driver": {"driver": 9999},
         }
@@ -123,6 +144,12 @@ class RideApiTests(TestCase):
         self.create()
         self.client.delete(f"/api/drivers/{self.driver.id}/")
         self.assertIsNone(Ride.objects.get().driver)
+
+    def test_delete(self):
+        ride_id = self.create().json()["id"]
+        self.assertEqual(self.client.delete(f"/api/rides/{ride_id}/").status_code, 204)
+        self.assertFalse(Ride.objects.exists())
+        self.assertEqual(self.client.delete(f"/api/rides/{ride_id}/").status_code, 404)
 
     def test_bad_date_param(self):
         self.assertEqual(self.client.get("/api/rides/?date=tomorrow").status_code, 400)
