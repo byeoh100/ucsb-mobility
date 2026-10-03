@@ -14,6 +14,8 @@ them in backend/.env (copy .env.example); in production, set them on the host.
   ALLOWED_EMAIL_DOMAINS       domains allowed on the admin/driver lists
                               (default "ucsb.edu", which also allows umail.ucsb.edu)
   DEV_LOGIN                   "true" to show a sign-in-as-any-email form (DEBUG only)
+  ARCHIVE_RETENTION_DAYS      days archived rides are kept (default 30)
+  TIME_ZONE                   campus time zone (default America/Los_Angeles)
   DJANGO_ALLOWED_HOSTS        extra hostnames, comma-separated (custom domains)
   DJANGO_CSRF_TRUSTED_ORIGINS extra origins, comma-separated, with https://
 """
@@ -67,6 +69,9 @@ if RENDER_HOST:
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 BOOTSTRAP_ADMIN_EMAIL = os.environ.get("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
 ALLOWED_EMAIL_DOMAINS = [d.lower() for d in env_list("ALLOWED_EMAIL_DOMAINS", "ucsb.edu")]
+
+# How long archived rides are kept before being deleted for good.
+ARCHIVE_RETENTION_DAYS = int(os.environ.get("ARCHIVE_RETENTION_DAYS", "30"))
 
 DEV_LOGIN = env_bool("DEV_LOGIN")
 if DEV_LOGIN and not DEBUG:

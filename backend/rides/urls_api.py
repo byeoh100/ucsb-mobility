@@ -1,7 +1,12 @@
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .api import RideViewSet
+from .api import ArchiveDaysView, ArchiveRidesView, RideViewSet
 
 router = SimpleRouter()
 router.register("rides", RideViewSet, basename="ride")
-urlpatterns = router.urls
+
+urlpatterns = [
+    path("archive/", ArchiveRidesView.as_view()),
+    path("archive/days/", ArchiveDaysView.as_view()),
+] + router.urls

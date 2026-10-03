@@ -206,7 +206,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .sort-arrow { font-size: 0.65rem; opacity: 0; }
 .sort-button:hover .sort-arrow { opacity: 0.35; }
 .sort-arrow.active { opacity: 1; color: var(--accent); }
-.ride-table th:last-child { padding: 0.65rem 0.7rem; }
+.ride-table th.plain { padding: 0.65rem 0.7rem; } /* headers without a sort button */
 .ride-table tr.is-completed td { color: var(--muted); }
 .swatch-small { width: 0.7rem; height: 0.7rem; margin-right: 0.45rem; }
 .status {
@@ -249,3 +249,24 @@ select {
 }
 .driver-select { display: flex; align-items: center; gap: 0.6rem; }
 .driver-select .swatch { width: 1.2rem; height: 1.2rem; flex: none; }
+
+/* Archive */
+.archive-note { margin: 0; }
+.archive-layout { display: grid; grid-template-columns: 12rem 1fr; gap: 1rem; align-items: start; }
+.archive-days {
+  display: flex; flex-direction: column; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto;
+}
+.archive-day {
+  font: inherit; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+  padding: 0.6rem 0.85rem; border: 0; border-bottom: 1px solid var(--border);
+  background: none; color: var(--text); cursor: pointer; text-align: left;
+}
+.archive-day:last-child { border-bottom: 0; }
+.archive-day:hover { background: var(--bg); }
+.archive-day.selected { background: #e6eef6; color: var(--accent); font-weight: 600; }
+.archive-day-count { font-size: 0.8rem; color: var(--muted); }
+.archive-detail { min-width: 0; }
+.archive-heading { font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+.ride-table.read-only { min-width: 73.5rem; } /* fixed columns minus link/actions, + 9rem email */

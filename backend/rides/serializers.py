@@ -61,9 +61,10 @@ class RideSerializer(serializers.ModelSerializer):
             "driver_color",
             "status",
             "rider_confirmed",
+            "started_at",
             "link_token",
         ]
-        read_only_fields = ["link_token"]
+        read_only_fields = ["link_token", "started_at"]
 
     # --- read-only computed fields ---
 

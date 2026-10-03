@@ -19,6 +19,8 @@ from django.views.decorators.http import require_GET, require_POST
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
+from rides.archive import ARCHIVE_HOUR
+
 from .roles import bootstrap_admin, get_role
 from .validators import normalize_email
 
@@ -35,6 +37,9 @@ def session_payload(request):
             "dev_login": settings.DEV_LOGIN,
             # Ride times display in the campus time zone, whatever the viewer's device says.
             "time_zone": settings.TIME_ZONE,
+            # Rides move to the archive at this hour the next morning.
+            "archive_hour": ARCHIVE_HOUR,
+            "archive_retention_days": settings.ARCHIVE_RETENTION_DAYS,
         },
     }
     if user.is_authenticated:

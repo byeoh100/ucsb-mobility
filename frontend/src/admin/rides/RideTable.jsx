@@ -23,8 +23,21 @@ const COLUMNS = [
   { key: "status", label: "Status", className: "c-status", value: (r) => STATUS_ORDER[r.status] ?? 9 },
 ];
 
-export function sortRides(rides, { key, dir }) {
-  const column = COLUMNS.find((c) => c.key === key) ?? COLUMNS[0];
+// Archived rides are all "completed", so the read-only (archive) table shows
+// when the driver actually started instead.
+const STARTED_COLUMN = {
+  key: "started",
+  label: "Driver started",
+  className: "c-status",
+  value: (r) => r.started_at ?? "~", // "~" sorts never-started rides last
+};
+
+function columnsFor(readOnly) {
+  return readOnly ? COLUMNS.map((c) => (c.key === "status" ? STARTED_COLUMN : c)) : COLUMNS;
+}
+
+export function sortRides(rides, { key, dir }, readOnly = false) {
+  const column = columnsFor(readOnly).find((c) => c.key === key) ?? COLUMNS[0];
   const sign = dir === "desc" ? -1 : 1;
   return [...rides].sort((a, b) => {
     const x = column.value(a);
@@ -42,9 +55,10 @@ export function sortRides(rides, { key, dir }) {
 //   timeZone   campus time zone for displaying times
 //   sort       { key, dir } and onSort(nextSort), shared so both tables sort alike
 //   onEdit     (ride) => void   (deleting happens from the edit dialog)
-export default function RideTable({ rides, timeZone, sort, onSort, onEdit }) {
-  const columns = COLUMNS;
-  const sorted = sortRides(rides, sort);
+//   readOnly   archive mode: no link or Edit columns; "Driver started" replaces Status
+export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readOnly = false }) {
+  const columns = columnsFor(readOnly);
+  const sorted = sortRides(rides, sort, readOnly);
 
   function clickHeader(key) {
     onSort(sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
@@ -52,13 +66,13 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit }) {
 
   return (
     <div className="table-wrap">
-      <table className="table ride-table">
+      <table className={`table ride-table${readOnly ? " read-only" : ""}`}>
         <colgroup>
           {columns.map((c) => (
             <col key={c.key} className={c.className} />
           ))}
-          <col className="c-link" />
-          <col className="c-actions" />
+          {!readOnly && <col className="c-link" />}
+          {!readOnly && <col className="c-actions" />}
         </colgroup>
         <thead>
           <tr>
@@ -75,15 +89,16 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit }) {
                 </th>
               );
             })}
-            <th>Rider link</th>
-            <th><span className="visually-hidden">Actions</span></th>
+            {!readOnly && <th className="plain">Rider link</th>}
+            {!readOnly && <th className="plain"><span className="visually-hidden">Actions</span></th>}
           </tr>
         </thead>
         <tbody>
           {sorted.map((r) => (
             <tr
               key={r.id}
-              className={r.status === "completed" ? "is-completed" : undefined}
+              // Dim finished rides on the live list; in the archive they're all finished.
+              className={!readOnly && r.status === "completed" ? "is-completed" : undefined}
               style={
                 r.driver_color
                   ? { boxShadow: `inset 4px 0 0 ${r.driver_color}`, background: `${r.driver_color}12` }
@@ -109,21 +124,29 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit }) {
                 )}
               </td>
               <td className="nowrap">
-                <span className={`status status-${r.status}`}>{STATUS_LABELS[r.status] ?? r.status}</span>
+                {readOnly ? (
+                  r.started_at ? formatTime(r.started_at, timeZone) : <span className="muted">Never started</span>
+                ) : (
+                  <span className={`status status-${r.status}`}>{STATUS_LABELS[r.status] ?? r.status}</span>
+                )}
                 {r.rider_confirmed && (
                   <span className="rider-confirmed" title="Rider confirmed" aria-label="Rider confirmed" role="img">
                     👍
                   </span>
                 )}
               </td>
-              <td className="nowrap">
-                <RideLinkCell token={r.link_token} />
-              </td>
-              <td className="col-actions">
-                <button className="button-quiet button-small" onClick={() => onEdit(r)} aria-label={`Edit ride for ${r.rider_name}`}>
-                  Edit
-                </button>
-              </td>
+              {!readOnly && (
+                <td className="nowrap">
+                  <RideLinkCell token={r.link_token} />
+                </td>
+              )}
+              {!readOnly && (
+                <td className="col-actions">
+                  <button className="button-quiet button-small" onClick={() => onEdit(r)} aria-label={`Edit ride for ${r.rider_name}`}>
+                    Edit
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

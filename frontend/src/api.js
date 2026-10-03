@@ -65,3 +65,8 @@ export const ridesApi = {
   update: (id, changes) => request(`/rides/${id}/`, { method: "PATCH", body: changes }),
   remove: (id) => request(`/rides/${id}/`, { method: "DELETE" }),
 };
+
+export const archiveApi = {
+  days: () => request("/archive/days/"),
+  list: (date) => request(`/archive/?date=${encodeURIComponent(date)}`),
+};

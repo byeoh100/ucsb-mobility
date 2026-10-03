@@ -1,13 +1,36 @@
 from datetime import date as date_type
 
+from django.db.models import Count
+from django.db.models.functions import TruncDate
 from django.utils import timezone
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, status, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from accounts.permissions import IsAdmin, IsDriverOrAdmin
 
+from .archive import archive_cutoff, is_archived, purge_expired
 from .models import Ride
 from .serializers import RideSerializer
 from .status import statuses_for
+
+
+def parse_date(raw):
+    try:
+        return date_type.fromisoformat(raw)
+    except (TypeError, ValueError):
+        raise serializers.ValidationError({"date": "Use YYYY-MM-DD."})
+
+
+def ride_statuses(rides):
+    # Include the same drivers' starts from other rides, so a ride is
+    # "completed" once its driver has started a later one, even if that
+    # later ride isn't in this list.
+    driver_ids = {r.driver_id for r in rides if r.driver_id}
+    starts = Ride.objects.filter(driver_id__in=driver_ids, started_at__isnull=False).values_list(
+        "driver_id", "started_at"
+    )
+    return statuses_for(rides, timezone.now(), other_starts=starts)
 
 
 class RideViewSet(viewsets.ModelViewSet):
@@ -20,6 +43,9 @@ class RideViewSet(viewsets.ModelViewSet):
 
     Drivers can read the full list too (they see all rides so they can
     trade by word of mouth), but only admins can change anything.
+
+    Archived days (see rides/archive.py) aren't listed here, and archived
+    rides can't be edited or deleted; they're read through /api/archive/.
     """
 
     serializer_class = RideSerializer
@@ -34,17 +60,29 @@ class RideViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         rides = Ride.objects.select_related("driver").order_by("pickup_time")
         if self.action == "list":
-            rides = rides.filter(pickup_time__date=self.requested_date())
+            day = self.requested_date()
+            if day < archive_cutoff():
+                return rides.none()  # archived: see /api/archive/
+            rides = rides.filter(pickup_time__date=day)
         return rides
 
     def requested_date(self):
         raw = self.request.query_params.get("date")
-        if not raw:
-            return timezone.localdate()
-        try:
-            return date_type.fromisoformat(raw)
-        except ValueError:
-            raise serializers.ValidationError({"date": "Use YYYY-MM-DD."})
+        return parse_date(raw) if raw else timezone.localdate()
+
+    def list(self, request, *args, **kwargs):
+        purge_expired()  # retention cleanup rides along with normal page loads
+        return super().list(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if is_archived(self.get_object()):
+            return archived_response()
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if is_archived(self.get_object()):
+            return archived_response()
+        return super().destroy(request, *args, **kwargs)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -61,11 +99,47 @@ class RideViewSet(viewsets.ModelViewSet):
         return super().get_serializer(*args, **kwargs)
 
     def statuses(self, rides):
-        # Include the same drivers' starts from other rides, so a ride is
-        # "completed" once its driver has started a later one, even if that
-        # later ride isn't in this list.
-        driver_ids = {r.driver_id for r in rides if r.driver_id}
-        starts = Ride.objects.filter(driver_id__in=driver_ids, started_at__isnull=False).values_list(
-            "driver_id", "started_at"
+        return ride_statuses(rides)
+
+
+def archived_response():
+    return Response({"error": "This ride is archived and can't be changed."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ArchiveDaysView(APIView):
+    """GET /api/archive/days/: which days have archived rides (newest first).
+
+    {"retention_days": 30, "days": [{"date": "2026-10-01", "count": 41}, ...]}
+    """
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from django.conf import settings
+
+        purge_expired()
+        days = (
+            Ride.objects.filter(pickup_time__date__lt=archive_cutoff())
+            .annotate(day=TruncDate("pickup_time", tzinfo=timezone.get_current_timezone()))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("-day")
         )
-        return statuses_for(rides, timezone.now(), other_starts=starts)
+        return Response({
+            "retention_days": settings.ARCHIVE_RETENTION_DAYS,
+            "days": [{"date": d["day"].isoformat(), "count": d["count"]} for d in days],
+        })
+
+
+class ArchiveRidesView(APIView):
+    """GET /api/archive/?date=YYYY-MM-DD: one archived day's rides (read-only)."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        day = parse_date(request.query_params.get("date"))
+        if day >= archive_cutoff():
+            return Response({"date": "That day hasn't been archived yet."}, status=status.HTTP_400_BAD_REQUEST)
+        rides = list(Ride.objects.select_related("driver").filter(pickup_time__date=day).order_by("pickup_time"))
+        data = RideSerializer(rides, many=True, context={"statuses": ride_statuses(rides)}).data
+        return Response(data)

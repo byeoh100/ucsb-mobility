@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router";
+import ArchivePage from "./admin/archive/ArchivePage.jsx";
 import DriversPage from "./admin/drivers/DriversPage.jsx";
-import Placeholder from "./admin/Placeholder.jsx";
 import RidesPage from "./admin/rides/RidesPage.jsx";
 import RequireRole from "./auth/RequireRole.jsx";
 import DriverHome from "./driver/DriverHome.jsx";
@@ -30,7 +30,7 @@ export default function App() {
         <Route index element={<Navigate to="rides" replace />} />
         <Route path="rides" element={<RidesPage />} />
         <Route path="drivers" element={<DriversPage />} />
-        <Route path="archive" element={<Placeholder title="Archive">Archived rides will appear here.</Placeholder>} />
+        <Route path="archive" element={<ArchivePage />} />
       </Route>
 
       {/* Driver profile (mobile) */}

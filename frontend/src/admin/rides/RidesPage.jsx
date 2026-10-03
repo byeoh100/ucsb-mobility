@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { driversApi, ridesApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import Modal from "../../components/Modal.jsx";
-import { isValidDate, todayIn } from "../../lib/time.js";
+import { archiveCutoffIn, isValidDate, todayIn } from "../../lib/time.js";
 
 import { campusParts, formatTime } from "../../lib/time.js";
 import DateNav from "./DateNav.jsx";
@@ -24,6 +24,8 @@ export default function RidesPage() {
   const [params, setParams] = useSearchParams();
   const date = isValidDate(params.get("date")) ? params.get("date") : today;
   const setDate = (next) => setParams(next === today ? {} : { date: next });
+  // Days before this have moved to the Archive (at 8 AM the next morning).
+  const archived = date < archiveCutoffIn(timeZone, config.archive_hour);
 
   const [rides, setRides] = useState(null); // null = loading
   const [error, setError] = useState("");
@@ -39,13 +41,17 @@ export default function RidesPage() {
   }, []);
 
   const load = useCallback(async () => {
+    if (archived) {
+      setRides([]);
+      return;
+    }
     try {
       setRides(await ridesApi.list(date));
       setError("");
     } catch (err) {
       setError(err.message);
     }
-  }, [date]);
+  }, [date, archived]);
 
   // Load when the day changes, then refresh every minute while the tab is visible.
   useEffect(() => {
@@ -81,7 +87,7 @@ export default function RidesPage() {
     <section className="stack">
       <div className="page-header">
         <h1>
-          Rides {rides && <span className="count">{rides.length}</span>}
+          Rides {rides && !archived && <span className="count">{rides.length}</span>}
         </h1>
         <div className="page-actions">
           <DateNav date={date} today={today} onChange={setDate} />
@@ -98,7 +104,14 @@ export default function RidesPage() {
       )}
       {rides === null && !error && <p className="muted">Loading rides…</p>}
 
-      {rides && (
+      {archived && (
+        <div className="empty-state">
+          <p>This day's rides have moved to the Archive.</p>
+          <Link to={`/admin/archive?date=${date}`}>View them in the Archive →</Link>
+        </div>
+      )}
+
+      {rides && !archived && (
         <>
           <UnassignedRides rides={unassigned} {...tableProps} />
           {assigned.length > 0 ? (

@@ -8,7 +8,13 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
-  const [config, setConfig] = useState({ google_client_id: "", dev_login: false, time_zone: "America/Los_Angeles" });
+  const [config, setConfig] = useState({
+    google_client_id: "",
+    dev_login: false,
+    time_zone: "America/Los_Angeles",
+    archive_hour: 8,
+    archive_retention_days: 30,
+  });
   const [error, setError] = useState("");
 
   const applySession = useCallback((data) => {

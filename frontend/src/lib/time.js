@@ -2,9 +2,15 @@
 // Times are shown in the campus time zone (from the server), not the device's.
 
 // Today's date on campus, e.g. "2026-10-02".
-export function todayIn(timeZone) {
+export function todayIn(timeZone, at = new Date()) {
   // en-CA formats as YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+  return new Intl.DateTimeFormat("en-CA", { timeZone }).format(at);
+}
+
+// Days before this date are archived. Mirrors rides/archive.py: the date
+// rolls over at the archive hour (8 AM) instead of midnight.
+export function archiveCutoffIn(timeZone, archiveHour) {
+  return todayIn(timeZone, new Date(Date.now() - archiveHour * 3600 * 1000));
 }
 
 // Move a "YYYY-MM-DD" date by n days. Done in UTC so DST never skips a day.
