@@ -87,3 +87,9 @@ export const riderApi = {
   pins: (token, pins) => request(`/r/${encodeURIComponent(token)}/pins/`, { method: "PUT", body: pins }),
   lookup: (phone) => request(`/lookup/?phone=${encodeURIComponent(phone)}`),
 };
+
+export const dispatchersApi = {
+  list: () => request("/dispatchers/"),
+  add: (email) => request("/dispatchers/", { method: "POST", body: { email } }),
+  remove: (id) => request(`/dispatchers/${id}/`, { method: "DELETE" }),
+};

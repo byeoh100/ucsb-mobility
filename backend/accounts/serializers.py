@@ -77,3 +77,35 @@ class DriverSerializer(serializers.ModelSerializer):
         if not value.strip():
             return ""
         return as_drf_error(normalize_phone, value)
+
+
+class DispatcherSerializer(serializers.ModelSerializer):
+    """A dispatcher = an email on the admin list (they sign in with Google)."""
+
+    email = serializers.EmailField()
+    is_you = serializers.SerializerMethodField()
+    last_sign_in = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AdminEmail
+        fields = ["id", "email", "created_at", "is_you", "last_sign_in"]
+        read_only_fields = ["created_at"]
+
+    def get_is_you(self, admin_email):
+        request = self.context.get("request")
+        return bool(request and normalize_email(request.user.email) == admin_email.email)
+
+    def get_last_sign_in(self, admin_email):
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.filter(username=admin_email.email).only("last_login").first()
+        return user.last_login if user else None
+
+    def validate_email(self, value):
+        email = normalize_email(value)
+        as_drf_error(validate_list_email, email)
+        if AdminEmail.objects.filter(email=email).exists():
+            raise serializers.ValidationError("This email is already a dispatcher.")
+        if Driver.objects.filter(email=email).exists():
+            raise serializers.ValidationError("This email is a driver. Remove them from Drivers first.")
+        return email

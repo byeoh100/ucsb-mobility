@@ -43,6 +43,7 @@ frontend/src/
 | `/driver` | driver profile |
 | `/api/auth/session/` | who's signed in, and their role |
 | `/api/drivers/` | driver list, add, edit, remove (admins only) |
+| `/api/dispatchers/` | dispatcher list, add, remove; never the last one (admins only) |
 | `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
 | `/api/rides/<id>/complete/`, `/reopen/` | optional Mark complete / Reopen (assigned driver, ride on the way) |
@@ -121,6 +122,18 @@ If Google or UCSB sign-in isn't working, two backup accounts can sign in with a 
 - After 10 wrong passwords, that username is locked for 5 minutes.
 - The backup driver's profile is created on its first sign-in, with the first free color. Dispatch can rename it or change its color on the Drivers page.
 - Backup accounts can't use `/django-admin/`, and don't affect the bootstrap admin.
+
+## Handing off the app
+
+Day to day, the program needs nobody technical: dispatchers add and remove **dispatchers** (admin → Dispatchers) and **drivers** (admin → Drivers) themselves. The last dispatcher can't be removed, so the program can't lock itself out.
+
+What can't be handed over inside the app, and needs new owners when you step away:
+
+1. **Render:** move the web service and database to an account the program controls (Render supports teams, or transfer), or have them create one and redeploy from the repository.
+2. **Google Cloud project:** add a program staff member as **Owner** (IAM & Admin → IAM), so they can manage sign-in settings and test users.
+3. **GitHub repository:** transfer it, or add a program member as an admin.
+4. **Settings and secrets:** have them set new backup sign-in passwords and their own `DJANGO_SUPERUSER_*` developer login, and update `BOOTSTRAP_ADMIN_EMAIL`, `DISPATCH_PHONE` and `PRIVACY_CONTACT_EMAIL`.
+5. **Remove yourself:** from Dispatchers, from Google Cloud and GitHub access, and delete your `/django-admin/` superuser.
 
 ## Security notes
 

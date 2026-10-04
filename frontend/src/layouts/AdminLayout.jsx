@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 const SECTIONS = [
   { to: "/admin/rides", label: "Rides" },
   { to: "/admin/drivers", label: "Drivers" },
+  { to: "/admin/dispatchers", label: "Dispatchers" },
   { to: "/admin/archive", label: "Archive" },
 ];
 

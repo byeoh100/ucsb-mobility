@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import ArchivePage from "./admin/archive/ArchivePage.jsx";
+import DispatchersPage from "./admin/dispatchers/DispatchersPage.jsx";
 import DriversPage from "./admin/drivers/DriversPage.jsx";
 import RidesPage from "./admin/rides/RidesPage.jsx";
 import RequireRole from "./auth/RequireRole.jsx";
@@ -45,6 +46,7 @@ export default function App() {
         <Route index element={<Navigate to="rides" replace />} />
         <Route path="rides" element={<RidesPage />} />
         <Route path="drivers" element={<DriversPage />} />
+        <Route path="dispatchers" element={<DispatchersPage />} />
         <Route path="archive" element={<ArchivePage />} />
       </Route>
 
