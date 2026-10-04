@@ -6,5 +6,6 @@ urlpatterns = [
     path("session/", views.session),
     path("google/", views.google_sign_in),
     path("dev/", views.dev_sign_in),
+    path("backup/", views.backup_sign_in),
     path("sign-out/", views.sign_out),
 ]

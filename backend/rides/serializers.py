@@ -62,12 +62,13 @@ class RideSerializer(serializers.ModelSerializer):
             "status",
             "rider_confirmed",
             "started_at",
+            "completed_at",
             "link_token",
         ]
-        read_only_fields = ["link_token", "started_at"]
+        read_only_fields = ["link_token", "started_at", "completed_at"]
 
     # Ride progress is private: only dispatch and the ride's own driver see it.
-    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at")
+    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at", "completed_at")
 
     def to_representation(self, ride):
         data = super().to_representation(ride)

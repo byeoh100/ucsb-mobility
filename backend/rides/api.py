@@ -56,7 +56,7 @@ class RideViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "delete"]
 
     def get_permissions(self):
-        if self.action in ("list", "retrieve", "start", "unstart"):
+        if self.action in ("list", "retrieve", "start", "unstart", "complete", "reopen"):
             return [IsDriverOrAdmin()]
         return [IsAdmin()]
 
@@ -117,6 +117,36 @@ class RideViewSet(viewsets.ModelViewSet):
             return error("Only a ride that's on the way can be undone.")
         ride.started_at = None
         ride.save(update_fields=["started_at", "updated_at"])
+        return Response(self.get_serializer(ride).data)
+
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        """POST /api/rides/<id>/complete/: optional "Mark complete" when a ride
+        finishes early. Closes the rider's link (it shows "ride complete") and
+        stops location sharing. Without it, the ride completes on its own."""
+        ride, problem = self.own_ride_for_today(request)
+        if problem:
+            return problem
+        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+            return error("Only a ride that's on the way can be marked complete.")
+        ride.completed_at = timezone.now()
+        ride.save(update_fields=["completed_at", "updated_at"])
+        return Response(self.get_serializer(ride).data)
+
+    @action(detail=True, methods=["post"])
+    def reopen(self, request, pk=None):
+        """POST /api/rides/<id>/reopen/: undo a mistaken "Mark complete"."""
+        ride, problem = self.own_ride_for_today(request)
+        if problem:
+            return problem
+        if not ride.completed_at:
+            return error("This ride wasn't marked complete.")
+        ride.completed_at = None
+        # Only if it would actually be on the way again: not past its window,
+        # and the driver hasn't started a later ride since.
+        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+            return error("This ride can't be reopened anymore.")
+        ride.save(update_fields=["completed_at", "updated_at"])
         return Response(self.get_serializer(ride).data)
 
     def own_ride_for_today(self, request):

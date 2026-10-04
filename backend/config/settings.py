@@ -14,6 +14,8 @@ them in backend/.env (copy .env.example); in production, set them on the host.
   ALLOWED_EMAIL_DOMAINS       domains allowed on the admin/driver lists
                               (default "ucsb.edu", which also allows umail.ucsb.edu)
   DEV_LOGIN                   "true" to show a sign-in-as-any-email form (DEBUG only)
+  FALLBACK_DISPATCH_PASSWORD  password for backup sign-in "dispatch" (blank = off)
+  FALLBACK_DRIVER_PASSWORD    password for backup sign-in "driver" (blank = off)
   ARCHIVE_RETENTION_DAYS      days archived rides are kept (default 30)
   DISPATCH_PHONE              dispatch's number, shown on rider pages
   PRIVACY_CONTACT_EMAIL       contact for privacy questions, shown on /privacy
@@ -80,6 +82,11 @@ DISPATCH_PHONE = os.environ.get("DISPATCH_PHONE", "")
 
 # Who to contact about privacy questions (shown on /privacy).
 PRIVACY_CONTACT_EMAIL = os.environ.get("PRIVACY_CONTACT_EMAIL", "")
+
+# Backup sign-in passwords (usernames "dispatch" and "driver"), for when Google
+# sign-in isn't working. Leave blank to keep an account switched off.
+FALLBACK_DISPATCH_PASSWORD = os.environ.get("FALLBACK_DISPATCH_PASSWORD", "")
+FALLBACK_DRIVER_PASSWORD = os.environ.get("FALLBACK_DRIVER_PASSWORD", "")
 
 DEV_LOGIN = env_bool("DEV_LOGIN")
 if DEV_LOGIN and not DEBUG:

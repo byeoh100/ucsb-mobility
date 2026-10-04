@@ -6,6 +6,7 @@ import logging
 from django.conf import settings
 from django.db.models import TextChoices
 
+from . import backup
 from .models import AdminEmail, Driver
 from .validators import email_domain_allowed, normalize_email
 
@@ -23,6 +24,14 @@ def get_role(user):
     if not user or not user.is_authenticated:
         return None
     email = normalize_email(user.email)
+    backup_name = backup.username_from_email(email)
+    if backup_name is not None:
+        # Backup accounts only work while their password is set.
+        if not backup.enabled(backup_name):
+            return Role.RIDER
+        if backup_name == "dispatch":
+            return Role.ADMIN
+        # The backup driver is a driver through its Driver row, like anyone else.
     if AdminEmail.objects.filter(email=email).exists():
         return Role.ADMIN
     if Driver.objects.filter(email=email).exists():

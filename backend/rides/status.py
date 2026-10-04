@@ -2,8 +2,8 @@
 
     not_confirmed  driver hasn't tapped "On the way" yet
     on_the_way     driver tapped it
-    completed      15 minutes past pickup time, OR the same driver has since
-                   started another ride
+    completed      the driver tapped "Mark complete", OR 15 minutes past pickup
+                   time, OR the same driver has since started another ride
 
 Computing it on read means rides complete on their own ("lazily"), with no
 scheduled job flipping statuses.
@@ -21,6 +21,8 @@ LINK_WINDOW = timedelta(minutes=15)
 
 
 def status_of(ride, now, driver_started_later):
+    if ride.completed_at:
+        return COMPLETED
     if now >= ride.pickup_time + LINK_WINDOW:
         return COMPLETED
     if ride.started_at:

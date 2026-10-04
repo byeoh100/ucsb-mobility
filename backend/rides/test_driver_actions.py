@@ -150,3 +150,88 @@ class StatusPrivacyTests(TestCase):
         with at(D, 9, 55):
             r = self.client.get(f"/api/rides/{self.sams.id}/").json()
         self.assertIsNone(r["status"])
+
+
+class MarkCompleteTests(TestCase):
+    """Optional "Mark complete": closes the rider link early."""
+
+    def setUp(self):
+        self.dana = Driver.objects.create(email="dana@ucsb.edu", name="Dana", color="#1a73e8")
+        self.sam = Driver.objects.create(email="sam@ucsb.edu", name="Sam", color="#d93025")
+        self.client.force_login(User.objects.create(username="dana@ucsb.edu", email="dana@ucsb.edu"))
+        self.ride = Ride.objects.create(
+            rider_name="R", rider_phone="8055550000", rider_email="r@ucsb.edu",
+            pickup_time=local(D, 10), pickup_name="A", dropoff_name="B", driver=self.dana,
+        )
+
+    def post(self, action, ride=None):
+        return self.client.post(f"/api/rides/{(ride or self.ride).id}/{action}/")
+
+    def rider_phase(self):
+        return self.client.get(f"/api/r/{self.ride.link_token}/").json()["phase"]
+
+    def test_complete_closes_rider_link_and_stops_location(self):
+        from .models import DriverLocation
+
+        with at(D, 9, 50):
+            self.post("start")
+            self.assertEqual(self.rider_phase(), "live")
+        with at(D, 9, 58):
+            r = self.post("complete")
+            self.assertEqual((r.status_code, r.json()["status"]), (200, "completed"))
+            self.assertEqual(self.rider_phase(), "complete")
+            sent = self.client.post("/api/location/", {"lat": 34.41, "lng": -119.84}, content_type="application/json")
+            self.assertEqual(sent.status_code, 409)  # sharing stops
+        self.assertFalse(DriverLocation.objects.exists())
+        with at(D, 10, 16):
+            self.assertEqual(self.rider_phase(), "expired")  # then expires as usual
+
+    def test_only_when_on_the_way(self):
+        with at(D, 9, 50):
+            self.assertEqual(self.post("complete").status_code, 400)
+
+    def test_only_assigned_driver(self):
+        sams = Ride.objects.create(
+            rider_name="R", rider_phone="8055550000", rider_email="r@ucsb.edu",
+            pickup_time=local(D, 11), pickup_name="A", dropoff_name="B", driver=self.sam, started_at=local(D, 10, 50),
+        )
+        with at(D, 10, 55):
+            self.assertEqual(self.post("complete", sams).status_code, 403)
+
+    def test_reopen_after_mistake(self):
+        with at(D, 9, 50):
+            self.post("start")
+            self.post("complete")
+            r = self.post("reopen")
+            self.assertEqual(r.json()["status"], "on_the_way")
+            self.assertEqual(self.rider_phase(), "live")
+            self.assertEqual(self.post("reopen").status_code, 400)  # not marked complete anymore
+
+    def test_cannot_reopen_after_window_or_next_ride(self):
+        nxt = Ride.objects.create(
+            rider_name="N", rider_phone="8055550001", rider_email="n@ucsb.edu",
+            pickup_time=local(D, 10, 30), pickup_name="A", dropoff_name="B", driver=self.dana,
+        )
+        with at(D, 9, 50):
+            self.post("start")
+            self.post("complete")
+        with at(D, 9, 55):
+            self.post("start", nxt)
+            self.assertEqual(self.post("reopen").status_code, 400)  # driver has moved on
+        self.ride.refresh_from_db()
+        self.assertIsNotNone(self.ride.completed_at)  # failed reopen changed nothing
+
+    def test_completed_ride_cannot_be_restarted(self):
+        with at(D, 9, 50):
+            self.post("start")
+            self.post("complete")
+            self.assertEqual(self.post("start").status_code, 400)
+
+    def test_completion_time_private_to_assigned_driver(self):
+        with at(D, 9, 50):
+            self.post("start")
+            self.post("complete")
+        self.client.force_login(User.objects.create(username="sam@ucsb.edu", email="sam@ucsb.edu"))
+        with at(D, 9, 55):
+            listed = self.client.get(f"/api/rides/?date={D}").json()[0]
+        self.assertEqual((listed["status"], listed["completed_at"]), (None, None))

@@ -22,6 +22,7 @@ from google.oauth2 import id_token
 from rides.archive import ARCHIVE_HOUR
 from rides.geo import frontend_calibration
 
+from . import backup
 from .models import Driver
 from .roles import bootstrap_admin, get_role
 from .validators import normalize_email
@@ -37,6 +38,7 @@ def session_payload(request):
         "config": {
             "google_client_id": settings.GOOGLE_CLIENT_ID,
             "dev_login": settings.DEV_LOGIN,
+            "backup_login": backup.any_enabled(),
             # Ride times display in the campus time zone, whatever the viewer's device says.
             "time_zone": settings.TIME_ZONE,
             # Rides move to the archive at this hour the next morning.
@@ -134,6 +136,50 @@ def dev_sign_in(request):
     if "@" not in email:
         return JsonResponse({"error": "Enter an email address."}, status=400)
     sign_in(request, email)
+    return JsonResponse(session_payload(request))
+
+
+# Backup sign-in: after this many wrong passwords for a username, that username
+# is locked for LOCKOUT_SECONDS. Counted per username (not per IP), so changing
+# addresses doesn't help a guesser.
+MAX_FAILURES = 10
+LOCKOUT_SECONDS = 5 * 60
+
+
+@require_POST
+def backup_sign_in(request):
+    """POST {username, password} for the backup accounts ("dispatch", "driver")."""
+    from django.core.cache import cache
+
+    data = parse_json(request) or {}
+    username = str(data.get("username", "")).strip().lower()
+    if not backup.any_enabled():
+        return JsonResponse({"error": "Backup sign-in is turned off."}, status=404)
+
+    failures_key = f"backup-login-failures:{username}"
+    if cache.get(failures_key, 0) >= MAX_FAILURES:
+        return JsonResponse({"error": "Too many wrong passwords. Try again in a few minutes."}, status=429)
+
+    if not backup.enabled(username) or not backup.password_matches(username, data.get("password")):
+        cache.set(failures_key, cache.get(failures_key, 0) + 1, LOCKOUT_SECONDS)
+        log.warning("Failed backup sign-in for %r", username)
+        return JsonResponse({"error": "Wrong username or password."}, status=400)
+
+    if username == "driver" and backup.ensure_driver_profile() is None:
+        return JsonResponse(
+            {"error": "All 12 driver colors are in use. Free one up on the Drivers page first."}, status=409
+        )
+
+    cache.delete(failures_key)
+    email = backup.email_for(username)
+    user, created = User.objects.get_or_create(
+        username=f"backup-{username}", defaults={"email": email, "first_name": "Backup", "last_name": username}
+    )
+    if created:
+        user.set_unusable_password()  # never usable at /django-admin/
+        user.save()
+    login(request, user)
+    log.info("Backup sign-in: %s", username)
     return JsonResponse(session_payload(request))
 
 

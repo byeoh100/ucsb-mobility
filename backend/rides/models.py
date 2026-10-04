@@ -42,6 +42,9 @@ class Ride(models.Model):
 
     # Set by the driver tapping "On the way" (driver view, later part).
     started_at = models.DateTimeField(null=True, blank=True)
+    # Set if the driver taps "Mark complete" (optional; otherwise the ride
+    # completes on its own; see rides/status.py).
+    completed_at = models.DateTimeField(null=True, blank=True)
     # Set by the rider's thumbs up on their link page (later part).
     rider_confirmed_at = models.DateTimeField(null=True, blank=True)
 

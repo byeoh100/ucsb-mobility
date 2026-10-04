@@ -14,6 +14,10 @@ def email_domain_allowed(email):
 
 
 def validate_list_email(email):
+    from .backup import email_for
+
+    if normalize_email(email) == email_for("driver"):
+        return  # the backup driver's reserved address (so dispatch can edit that driver)
     if not email_domain_allowed(email):
         allowed = ", ".join(settings.ALLOWED_EMAIL_DOMAINS)
         raise ValidationError(f"Only {allowed} email addresses can be added to this list.")
