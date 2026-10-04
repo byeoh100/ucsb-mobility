@@ -1,3 +1,5 @@
+import { Req } from "../../components/Required.jsx";
+
 // Pick one of the 12 preset driver colors. Colors another driver already uses
 // are grayed out and can't be chosen; hovering shows who has them.
 //
@@ -6,13 +8,15 @@
 //   takenBy   { [colorValue]: driverName } for colors other drivers use
 //   value     selected color value
 //   onChange  (colorValue) => void
-export default function ColorPicker({ colors, takenBy, value, onChange, error }) {
+export default function ColorPicker({ colors, takenBy, value, onChange, error, required = false }) {
   const selected = colors.find((c) => c.value === value);
   const allTaken = colors.every((c) => takenBy[c.value]);
 
   return (
-    <fieldset className="field color-picker">
-      <legend>Color</legend>
+    <fieldset className="field color-picker" aria-required={required || undefined}>
+      <legend>
+        Color {required && <Req />}
+      </legend>
       <div className="swatch-grid">
         {colors.map((c) => {
           const owner = takenBy[c.value];

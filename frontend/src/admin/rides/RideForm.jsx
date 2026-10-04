@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { ridesApi } from "../../api.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
+import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
+import { useAuth } from "../../auth/AuthProvider.jsx";
 import { campusParts } from "../../lib/time.js";
 
-const EARLIEST = "08:00";
-const LATEST = "22:00";
+// "19:00" → "7:00 PM"
+function timeLabel(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
 
 // Add or edit a ride. Shown inside a Modal by RidesPage.
 //
@@ -20,6 +25,10 @@ const LATEST = "22:00";
 //   onDelete     (ride) => void, edit mode only; the page asks for confirmation
 export default function RideForm({ ride, defaultDate, today, drivers, timeZone, onSaved, onCancel, onDelete }) {
   const isEdit = Boolean(ride);
+  // Hours of operation come from the server (SERVICE_START / SERVICE_END).
+  const { config } = useAuth();
+  const EARLIEST = config.service_hours?.start ?? "07:00";
+  const LATEST = config.service_hours?.end ?? "19:00";
   const original = isEdit ? campusParts(ride.pickup_time, timeZone) : null;
 
   const [riderName, setRiderName] = useState(ride?.rider_name ?? "");
@@ -50,7 +59,9 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
     if (!isCompletePhone(phone)) found.rider_phone = "Enter all 10 digits.";
     if (!email.trim()) found.rider_email = "Enter the rider's UCSB email.";
     if (!date || !time) found.pickup_time = "Enter a date and time.";
-    else if (time < EARLIEST || time > LATEST) found.pickup_time = "Rides must be between 8:00 AM and 10:00 PM.";
+    // Hours are only checked when the time changes (like the server), so a ride
+    // booked before the hours changed can still be edited, e.g. reassigned.
+    else if (timeChanged && (time < EARLIEST || time > LATEST)) found.pickup_time = `Rides must be between ${timeLabel(EARLIEST)} and ${timeLabel(LATEST)}.`;
     else if (timeChanged && date < today) found.pickup_time = "That date has already passed.";
     if (!pickup.trim()) found.pickup_name = "Enter where to pick them up.";
     if (!dropoff.trim()) found.dropoff_name = "Enter where to drop them off.";
@@ -94,22 +105,24 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
 
   return (
     <form className="stack" onSubmit={submit} noValidate>
+      <RequiredNote />
       <fieldset className="form-section">
         <legend>Rider</legend>
         <label className="field">
-          Name
-          <input value={riderName} onChange={(e) => edit("rider_name", setRiderName)(e.target.value)} autoComplete="off" autoFocus />
+          <span>Name <Req /></span>
+          <input value={riderName} onChange={(e) => edit("rider_name", setRiderName)(e.target.value)} autoComplete="off" autoFocus aria-required="true" />
           {error("rider_name")}
         </label>
         <div className="form-row">
           <label className="field">
-            Phone
-            <PhoneInput value={phone} onChange={edit("rider_phone", setPhone)} autoComplete="off" />
+            <span>Phone <Req /></span>
+            <PhoneInput value={phone} onChange={edit("rider_phone", setPhone)} autoComplete="off" aria-required="true" />
             {error("rider_phone")}
           </label>
           <label className="field">
-            UCSB email
+            <span>UCSB email <Req /></span>
             <input
+              aria-required="true"
               type="email"
               value={email}
               onChange={(e) => edit("rider_email", setEmail)(e.target.value)}
@@ -127,12 +140,13 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
         <legend>Ride</legend>
         <div className="form-row">
           <label className="field">
-            Date
-            <input type="date" value={date} min={isEdit ? undefined : today} onChange={(e) => edit("pickup_time", setDate)(e.target.value)} />
+            <span>Date <Req /></span>
+            <input aria-required="true" type="date" value={date} min={isEdit ? undefined : today} onChange={(e) => edit("pickup_time", setDate)(e.target.value)} />
           </label>
           <label className="field">
-            Pickup time
+            <span>Pickup time <Req /></span>
             <input
+              aria-required="true"
               type="time"
               value={time}
               min={EARLIEST}
@@ -145,13 +159,13 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
         {error("pickup_time")}
         <div className="form-row">
           <label className="field">
-            From
-            <input value={pickup} onChange={(e) => edit("pickup_name", setPickup)(e.target.value)} placeholder="e.g. Davidson Library" />
+            <span>From <Req /></span>
+            <input aria-required="true" value={pickup} onChange={(e) => edit("pickup_name", setPickup)(e.target.value)} placeholder="e.g. Davidson Library" />
             {error("pickup_name")}
           </label>
           <label className="field">
-            To
-            <input value={dropoff} onChange={(e) => edit("dropoff_name", setDropoff)(e.target.value)} placeholder="e.g. Campbell Hall" />
+            <span>To <Req /></span>
+            <input aria-required="true" value={dropoff} onChange={(e) => edit("dropoff_name", setDropoff)(e.target.value)} placeholder="e.g. Campbell Hall" />
             {error("dropoff_name")}
           </label>
         </div>

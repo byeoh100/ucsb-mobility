@@ -133,8 +133,8 @@ class RideApiTests(TestCase):
     def test_rejections(self):
         yesterday = timezone.localdate() - timedelta(days=1)
         cases = {
-            "before 8am": {"pickup_time": f"{self.tomorrow}T07:59"},
-            "after 10pm": {"pickup_time": f"{self.tomorrow}T22:01"},
+            "before 7am": {"pickup_time": f"{self.tomorrow}T06:59"},
+            "after 7pm": {"pickup_time": f"{self.tomorrow}T19:01"},
             "past date": {"pickup_time": f"{yesterday}T09:00"},
             "bad phone": {"rider_phone": "555-0101"},
             "non-UCSB email": {"rider_email": "alex@gmail.com"},
@@ -146,8 +146,28 @@ class RideApiTests(TestCase):
                 self.assertEqual(self.create(**overrides).status_code, 400)
 
     def test_boundaries_allowed(self):
-        self.assertEqual(self.create(pickup_time=f"{self.tomorrow}T08:00").status_code, 201)
-        self.assertEqual(self.create(pickup_time=f"{self.tomorrow}T22:00").status_code, 201)
+        self.assertEqual(self.create(pickup_time=f"{self.tomorrow}T07:00").status_code, 201)
+        self.assertEqual(self.create(pickup_time=f"{self.tomorrow}T19:00").status_code, 201)
+
+    def test_hours_message(self):
+        r = self.create(pickup_time=f"{self.tomorrow}T19:30")
+        self.assertEqual(r.json()["pickup_time"], ["Rides must be between 7:00 AM and 7:00 PM."])
+
+    def test_ride_outside_new_hours_can_still_be_reassigned(self):
+        ride_id = self.create().json()["id"]
+        Ride.objects.filter(id=ride_id).update(
+            pickup_time=timezone.make_aware(datetime.combine(self.tomorrow, time(20, 30)))  # booked before hours changed
+        )
+        r = self.client.patch(f"/api/rides/{ride_id}/", {"driver": None}, content_type="application/json")
+        self.assertEqual(r.status_code, 200, r.json())
+
+    @override_settings(SERVICE_START="06:30", SERVICE_END="21:15")
+    def test_hours_are_a_setting(self):
+        self.assertEqual(self.create(pickup_time=f"{self.tomorrow}T06:30").status_code, 201)
+        r = self.create(pickup_time=f"{self.tomorrow}T21:16")
+        self.assertEqual(r.json()["pickup_time"], ["Rides must be between 6:30 AM and 9:15 PM."])
+        config = self.client.get("/api/auth/session/").json()["config"]
+        self.assertEqual(config["service_hours"], {"start": "06:30", "end": "21:15"})
 
     def test_removing_driver_unassigns_rides(self):
         self.create()

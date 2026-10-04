@@ -1,18 +1,14 @@
-from datetime import time
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from rest_framework import serializers
 
 from accounts.models import Driver
 from accounts.validators import normalize_email, validate_rider_email
+from common import service_hours
 from common.phone import normalize_phone
 
 from .models import Ride
 
-# Drivers work 8am–10pm; entries outside that are rejected.
-EARLIEST = time(8, 0)
-LATEST = time(22, 0)
 
 
 def django_to_drf(func, value):
@@ -123,8 +119,8 @@ class RideSerializer(serializers.ModelSerializer):
 
     def validate_pickup_time(self, value):
         local = timezone.localtime(value)
-        if not (EARLIEST <= local.time() <= LATEST):
-            raise serializers.ValidationError("Rides must be between 8:00 AM and 10:00 PM.")
+        if not (service_hours.start() <= local.time() <= service_hours.end()):
+            raise serializers.ValidationError(service_hours.window_message())
         # Only new times are checked against today, so an old ride can still
         # be edited (e.g. reassigned) without tripping this.
         unchanged = self.instance is not None and self.instance.pickup_time == value

@@ -16,7 +16,7 @@ export default function AdminLayout() {
   return (
     <div className="admin">
       <header className="admin-bar">
-        <span className="brand">Cart Dispatch</span>
+        <span className="brand">UCSB Mobility Tracker</span>
         <nav aria-label="Admin sections">
           {SECTIONS.map((s) => (
             <NavLink key={s.to} to={s.to} className="tab">

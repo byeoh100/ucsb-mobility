@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { driversApi } from "../../api.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
+import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
 import ColorPicker from "./ColorPicker.jsx";
 
@@ -69,15 +70,17 @@ export default function DriverForm({ driver, drivers, colors, onSaved, onCancel 
 
   return (
     <form className="stack" onSubmit={submit} noValidate>
+      <RequiredNote />
       <label className="field">
-        Name
-        <input value={name} onChange={(e) => edit("name", setName)(e.target.value)} autoComplete="off" autoFocus />
+        <span>Name <Req /></span>
+        <input aria-required="true" value={name} onChange={(e) => edit("name", setName)(e.target.value)} autoComplete="off" autoFocus />
         {errors.name && <span className="field-error">{errors.name}</span>}
       </label>
 
       <label className="field">
-        UCSB email
+        <span>UCSB email <Req /></span>
         <input
+          aria-required="true"
           type="email"
           value={email}
           onChange={(e) => edit("email", setEmail)(e.target.value)}
@@ -98,7 +101,7 @@ export default function DriverForm({ driver, drivers, colors, onSaved, onCancel 
         {errors.phone && <span className="field-error">{errors.phone}</span>}
       </label>
 
-      <ColorPicker colors={colors} takenBy={takenBy} value={color} onChange={edit("color", setColor)} error={errors.color} />
+      <ColorPicker colors={colors} takenBy={takenBy} value={color} onChange={edit("color", setColor)} error={errors.color} required />
 
       {(errors.form || errors.non_field_errors) && (
         <p className="error" role="alert">{errors.form || errors.non_field_errors}</p>

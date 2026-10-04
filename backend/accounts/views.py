@@ -19,6 +19,7 @@ from django.views.decorators.http import require_GET, require_POST
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
+from common import service_hours
 from rides.archive import ARCHIVE_HOUR
 from rides.geo import frontend_calibration
 
@@ -46,6 +47,8 @@ def session_payload(request):
             "archive_retention_days": settings.ARCHIVE_RETENTION_DAYS,
             # For drawing the driver's own GPS on the campus map (see rides/geo.py).
             "map_calibration": frontend_calibration(),
+            # Hours of operation, for the ride form's limits.
+            "service_hours": service_hours.for_frontend(),
             # Shown on public pages (rider page, privacy policy).
             "dispatch_phone": settings.DISPATCH_PHONE,
             "privacy_contact_email": settings.PRIVACY_CONTACT_EMAIL,

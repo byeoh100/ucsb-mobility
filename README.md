@@ -1,4 +1,4 @@
-# Cart Dispatch
+# UCSB Mobility Tracker
 
 Ride dispatch for the campus golf cart program. Django + React, deployed as one app.
 
@@ -161,7 +161,7 @@ To give another developer access, create a superuser for them (or tick *Superuse
 
 You need an OAuth client ID. There's no client secret, because the browser gets a signed token from Google and the server verifies it with Google's public keys. The console wording below may shift slightly over time.
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com), create a project (e.g. "Cart Dispatch").
+1. Go to [Google Cloud Console](https://console.cloud.google.com), create a project (e.g. "UCSB Mobility Tracker").
 2. Open **Google Auth Platform** (formerly "OAuth consent screen") and configure it: app name, support email, and audience **External**.
 3. Under **Audience**, publish the app (**In production**). While it's in "Testing", only test users you list can sign in. The app only asks for basic profile and email, which doesn't require Google's verification review.
 4. Under **Clients**, create a client of type **Web application**. Add these **Authorized JavaScript origins**:
@@ -204,6 +204,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
 | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |
+| `SERVICE_START`, `SERVICE_END` | optional | hours of operation, 24-hour `HH:MM` (default `07:00` to `19:00`); rides can only be scheduled in this window |
 | `DISPATCH_PHONE` | recommended | dispatch's number, shown on rider pages and the privacy policy |
 | `PRIVACY_CONTACT_EMAIL` | recommended | contact for privacy questions, shown on `/privacy` |
 | `ARCHIVE_RETENTION_DAYS` | optional | days archived rides are kept (default 30) |
@@ -216,6 +217,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped the optional **Mark complete** (which can be undone with Reopen), 15 min after pickup, or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
 - Archiving is computed too (`rides/archive.py`): a day's rides leave the Rides page and become read-only at 8:00 AM the next morning. Rides older than `ARCHIVE_RETENTION_DAYS` are deleted by `purge_expired()`, which runs as the rides and archive pages load, so no scheduled job is needed. `seed_demo --date <past date>` fills the archive for testing.
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
+- Hours of operation (default 7:00 AM to 7:00 PM) are one setting, `SERVICE_START`/`SERVICE_END`, enforced by the server and shown by the ride form (`common/service_hours.py`).
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
 - Rider page phases (`rides/rider_page.py`): more than 15 min before pickup it shows details and lets riders place pins; from 15 min before to 15 min after it's live (status, drop-offs away, driver's position, 👍 once the driver is on the way); once the driver starts their next ride it says the ride is complete; after the window the link shows nothing but "expired".

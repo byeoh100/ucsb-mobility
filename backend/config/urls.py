@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-admin.site.site_header = "Cart Dispatch (developer)"
-admin.site.site_title = "Cart Dispatch"
+admin.site.site_header = "UCSB Mobility Tracker (developer)"
+admin.site.site_title = "UCSB Mobility Tracker"
 from django.http import JsonResponse
 from django.urls import include, path, re_path
 

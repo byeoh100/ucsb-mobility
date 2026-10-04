@@ -95,7 +95,7 @@ export default function DriverHome() {
             {user.driver.name}
           </>
         ) : (
-          "Cart Dispatch"
+          "UCSB Mobility Tracker"
         )
       }
       actions={<button className="button-quiet" onClick={signOut}>Sign out</button>}

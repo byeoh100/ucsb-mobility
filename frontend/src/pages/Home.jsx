@@ -51,7 +51,7 @@ export default function Home() {
   };
 
   return (
-    <MobileLayout title="Cart Dispatch" actions={headerAction}>
+    <MobileLayout title="UCSB Mobility Tracker" actions={headerAction}>
       <form className="stack" onSubmit={lookUp} noValidate>
         <div>
           <h1>Find your ride</h1>

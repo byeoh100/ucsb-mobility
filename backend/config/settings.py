@@ -1,5 +1,5 @@
 """
-Settings for Cart Dispatch.
+Settings for UCSB Mobility Tracker.
 
 Everything that differs between your laptop and production comes from
 environment variables, so the same code runs in both places. Locally, put
@@ -17,6 +17,7 @@ them in backend/.env (copy .env.example); in production, set them on the host.
   FALLBACK_DISPATCH_PASSWORD  password for backup sign-in "dispatch" (blank = off)
   FALLBACK_DRIVER_PASSWORD    password for backup sign-in "driver" (blank = off)
   ARCHIVE_RETENTION_DAYS      days archived rides are kept (default 30)
+  SERVICE_START, SERVICE_END  hours of operation, 24-hour HH:MM (default 07:00 to 19:00)
   DISPATCH_PHONE              dispatch's number, shown on rider pages
   PRIVACY_CONTACT_EMAIL       contact for privacy questions, shown on /privacy
   TIME_ZONE                   campus time zone (default America/Los_Angeles)
@@ -76,6 +77,11 @@ ALLOWED_EMAIL_DOMAINS = [d.lower() for d in env_list("ALLOWED_EMAIL_DOMAINS", "u
 
 # How long archived rides are kept before being deleted for good.
 ARCHIVE_RETENTION_DAYS = int(os.environ.get("ARCHIVE_RETENTION_DAYS", "30"))
+
+# Hours of operation (24-hour HH:MM). Rides can only be scheduled in this
+# window; the ride form shows the same limits (see common/service_hours.py).
+SERVICE_START = os.environ.get("SERVICE_START", "07:00")
+SERVICE_END = os.environ.get("SERVICE_END", "19:00")
 
 # Shown on rider pages ("Questions? Call dispatch"). Digits or any format.
 DISPATCH_PHONE = os.environ.get("DISPATCH_PHONE", "")

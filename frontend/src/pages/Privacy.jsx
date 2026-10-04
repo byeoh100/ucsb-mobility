@@ -5,7 +5,7 @@ import { formatPhone } from "../lib/phone.js";
 // Public privacy policy (/privacy), linked from Google's consent screen.
 // Written to match what the app actually does; if the app changes, update
 // this page too. Have the program (and UCSB, if required) review the wording.
-const LAST_UPDATED = "October 3, 2026";
+const LAST_UPDATED = "October 4, 2026";
 
 export default function Privacy() {
   const { config } = useAuth();
@@ -17,13 +17,13 @@ export default function Privacy() {
     <div className="doc-page">
       <article className="doc">
         <p className="doc-back">
-          <Link to="/">← Cart Dispatch</Link>
+          <Link to="/">← UCSB Mobility Tracker</Link>
         </p>
         <h1>Privacy Policy</h1>
         <p className="muted">Last updated {LAST_UPDATED}</p>
 
         <p>
-          Cart Dispatch coordinates golf cart rides for UC Santa Barbara students who need transportation to class.
+          UCSB Mobility Tracker coordinates golf cart rides for UC Santa Barbara students who need transportation to class.
           This page explains what information the app uses, who can see it, and how long it's kept.
         </p>
 

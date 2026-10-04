@@ -16,6 +16,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from accounts.models import Driver
+from common import service_hours
 from rides.models import Ride
 
 # Buildings and where they sit on the campus map image (fraction across,
@@ -79,8 +80,11 @@ class Command(BaseCommand):
         tz = timezone.get_current_timezone()
         created = 0
         for i in range(opts["rides"]):
-            minutes = rng.randrange(0, 14 * 60, 10)  # 8:00 AM to 9:50 PM
-            pickup_time = datetime.combine(day, datetime.min.time(), tzinfo=tz) + timedelta(hours=8, minutes=minutes)
+            # Somewhere within hours of operation, on a 10-minute mark.
+            open_m = service_hours.start().hour * 60 + service_hours.start().minute
+            close_m = service_hours.end().hour * 60 + service_hours.end().minute
+            minutes = rng.randrange(open_m, close_m, 10)
+            pickup_time = datetime.combine(day, datetime.min.time(), tzinfo=tz) + timedelta(minutes=minutes)
             start, end = rng.sample(PLACES, 2)
             first, last = rng.choice(FIRST), rng.choice(LAST)
             driver = rng.choice(drivers) if drivers and rng.random() > 0.15 else None  # ~15% unassigned

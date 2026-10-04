@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
     time_zone: "America/Los_Angeles",
     archive_hour: 8,
     archive_retention_days: 30,
+    service_hours: { start: "07:00", end: "19:00" },
     dispatch_phone: "",
     privacy_contact_email: "",
   });
