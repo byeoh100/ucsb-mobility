@@ -105,15 +105,15 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                   : undefined
               }
             >
-              <td className="nowrap strong">{formatTime(r.pickup_time, timeZone)}</td>
-              <td className="strong">{r.rider_name}</td>
-              <td className="nowrap">{formatPhone(r.rider_phone)}</td>
-              <td className="email">
+              <td className="nowrap strong" data-label="Time">{formatTime(r.pickup_time, timeZone)}</td>
+              <td className="strong" data-label="Rider">{r.rider_name}</td>
+              <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
+              <td className="email" data-label="Email">
                 <EmailBreak email={r.rider_email} />
               </td>
-              <td>{r.pickup_name}</td>
-              <td>{r.dropoff_name}</td>
-              <td>
+              <td data-label="From">{r.pickup_name}</td>
+              <td data-label="To">{r.dropoff_name}</td>
+              <td data-label="Driver">
                 {r.driver_name ? (
                   <>
                     <span className="swatch swatch-small" style={{ background: r.driver_color }} aria-hidden="true" />
@@ -123,7 +123,7 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                   <span className="muted">Unassigned</span>
                 )}
               </td>
-              <td className="nowrap">
+              <td className="nowrap" data-label={readOnly ? "Started" : "Status"}>
                 {readOnly ? (
                   r.started_at ? formatTime(r.started_at, timeZone) : <span className="muted">Never started</span>
                 ) : (
@@ -136,7 +136,7 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                 )}
               </td>
               {!readOnly && (
-                <td className="nowrap">
+                <td className="nowrap" data-label="Link">
                   <RideLinkCell token={r.link_token} />
                 </td>
               )}
@@ -172,7 +172,7 @@ function RideLinkCell({ token }) {
 
   return (
     <span className="link-cell">
-      <a href={`/r/${token}`} target="_blank" rel="noreferrer">Open</a>
+      <a className="button-quiet button-small" href={`/r/${token}`} target="_blank" rel="noreferrer">Open</a>
       <button className="button-quiet button-small" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
     </span>
   );

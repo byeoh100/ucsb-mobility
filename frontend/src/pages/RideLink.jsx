@@ -51,7 +51,7 @@ export default function RideLink() {
   else if (!data && error) body = <p className="error">{error}</p>;
   else if (!data) body = <p className="muted">Loading your ride…</p>;
   else if (phase === "expired") body = <Message title="This ride link has expired">Links stop working 15 minutes after the pickup time.</Message>;
-  else if (phase === "complete") body = <Message title="Your ride is complete">Thanks for riding! You can close this page.</Message>;
+  else if (phase === "complete") body = <Message title="Your ride is complete" tone="done">Thanks for riding! You can close this page.</Message>;
   else body = <ActiveRide data={data} token={token} timeZone={timeZone} onUpdate={setData} />;
 
   return (
@@ -78,9 +78,16 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
       <section className="rider-summary">
         <span className="rider-day">{dayLabel}</span>
         <span className="rider-time">{formatTime(ride.pickup_time, timeZone)}</span>
-        <span className="rider-route">
-          {ride.pickup_name} → {ride.dropoff_name}
-        </span>
+        <dl className="rider-route">
+          <div>
+            <dt className="legend legend-pickup">Pick up</dt>
+            <dd>{ride.pickup_name}</dd>
+          </div>
+          <div>
+            <dt className="legend legend-dropoff">Drop off</dt>
+            <dd>{ride.dropoff_name}</dd>
+          </div>
+        </dl>
       </section>
 
       {live ? (
@@ -90,7 +97,7 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
       )}
 
       <section className="stack">
-        <h2 className="section-title">{editingPins ? "Mark your spots" : "Map"}</h2>
+        <h2 className="section-title">{editingPins ? "Mark your spots" : "Campus map"}</h2>
         {editingPins ? (
           <PinEditor
             pickup={ride.pickup_pin}
@@ -169,10 +176,9 @@ function LiveStatus({ live, ride, token, onUpdate }) {
 
   return (
     <section className={`live-status${onTheWay ? " on-the-way" : ""}`} aria-live="polite">
-      <p className="live-headline">
-        {live.driver && <span className="swatch swatch-small" style={{ background: live.driver.color }} aria-hidden="true" />}
-        {headline}
-      </p>
+      {/* No driver color dot here: driver colors are a dispatch tool, and next to
+          the pickup/drop-off dots a colored dot would read as one of those. */}
+      <p className="live-headline">{headline}</p>
       <p className="live-detail">{detail}</p>
       {onTheWay &&
         (ride.rider_confirmed ? (
@@ -187,9 +193,10 @@ function LiveStatus({ live, ride, token, onUpdate }) {
   );
 }
 
-function Message({ title, children }) {
+function Message({ title, children, tone }) {
   return (
-    <section className="stack rider-message">
+    <section className={`stack rider-message${tone ? ` rider-message-${tone}` : ""}`}>
+      {tone === "done" && <span className="done-mark" aria-hidden="true">✓</span>}
       <h1>{title}</h1>
       <p className="muted">{children}</p>
     </section>
@@ -198,10 +205,16 @@ function Message({ title, children }) {
 
 function DispatchContact({ phone }) {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, "").slice(-10);
   return (
-    <p className="dispatch-contact">
-      Questions about your ride? <a href={`tel:+1${digits.slice(-10)}`}>Call dispatch at {formatPhone(digits.slice(-10))}</a>
-    </p>
+    <section className="dispatch-contact">
+      <span>
+        <strong>Questions about your ride?</strong>
+        <span className="muted"> Dispatch can help.</span>
+      </span>
+      <a className="button-quiet call-dispatch" href={`tel:+1${digits}`}>
+        Call {formatPhone(digits)}
+      </a>
+    </section>
   );
 }

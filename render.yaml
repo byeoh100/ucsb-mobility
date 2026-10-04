@@ -18,6 +18,8 @@ services:
         value: America/Los_Angeles
       - key: DISPATCH_PHONE      # shown on rider pages; edit to dispatch's real number
         value: ""
+      - key: PRIVACY_CONTACT_EMAIL   # shown on /privacy
+        value: ""
       # Render asks for these when you create the Blueprint.
       - key: GOOGLE_CLIENT_ID
         sync: false

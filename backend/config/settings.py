@@ -16,6 +16,7 @@ them in backend/.env (copy .env.example); in production, set them on the host.
   DEV_LOGIN                   "true" to show a sign-in-as-any-email form (DEBUG only)
   ARCHIVE_RETENTION_DAYS      days archived rides are kept (default 30)
   DISPATCH_PHONE              dispatch's number, shown on rider pages
+  PRIVACY_CONTACT_EMAIL       contact for privacy questions, shown on /privacy
   TIME_ZONE                   campus time zone (default America/Los_Angeles)
   DJANGO_ALLOWED_HOSTS        extra hostnames, comma-separated (custom domains)
   DJANGO_CSRF_TRUSTED_ORIGINS extra origins, comma-separated, with https://
@@ -76,6 +77,9 @@ ARCHIVE_RETENTION_DAYS = int(os.environ.get("ARCHIVE_RETENTION_DAYS", "30"))
 
 # Shown on rider pages ("Questions? Call dispatch"). Digits or any format.
 DISPATCH_PHONE = os.environ.get("DISPATCH_PHONE", "")
+
+# Who to contact about privacy questions (shown on /privacy).
+PRIVACY_CONTACT_EMAIL = os.environ.get("PRIVACY_CONTACT_EMAIL", "")
 
 DEV_LOGIN = env_bool("DEV_LOGIN")
 if DEV_LOGIN and not DEBUG:

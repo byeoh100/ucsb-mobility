@@ -26,8 +26,7 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
       <table className="table">
         <thead>
           <tr>
-            <th className="col-color">Color</th>
-            <th>Name</th>
+            <th>Driver</th>
             <th>UCSB email</th>
             <th>Phone</th>
             <th>Current ride</th>
@@ -37,19 +36,21 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
         <tbody>
           {drivers.map((d) => (
             <tr key={d.id}>
-              <td className="col-color">
-                <span
-                  className="swatch"
-                  style={{ background: d.color }}
-                  title={colorName[d.color] || d.color}
-                  aria-label={colorName[d.color] || d.color}
-                  role="img"
-                />
+              <td className="strong" data-label="Driver">
+                <span className="driver-name">
+                  <span
+                    className="swatch"
+                    style={{ background: d.color }}
+                    title={colorName[d.color] || d.color}
+                    aria-label={`Color: ${colorName[d.color] || d.color}`}
+                    role="img"
+                  />
+                  {d.name}
+                </span>
               </td>
-              <td className="strong">{d.name}</td>
-              <td>{d.email}</td>
-              <td className="nowrap">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
-              <td>
+              <td data-label="Email">{d.email}</td>
+              <td className="nowrap" data-label="Phone">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
+              <td data-label="Ride">
                 <CurrentRide ride={d.current_ride} location={d.location} timeZone={timeZone} />
               </td>
               <td className="col-actions">
@@ -75,7 +76,7 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
 // What the driver is doing right now: their ride that's on the way, and how
 // fresh their location is. The rider link shows where they are on the map.
 function CurrentRide({ ride, location, timeZone }) {
-  if (!ride) return <span className="muted">—</span>;
+  if (!ride) return <span className="muted">Not on a ride</span>;
   return (
     <span className="current-ride">
       <span>

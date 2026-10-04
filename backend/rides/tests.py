@@ -105,16 +105,25 @@ class RideApiTests(TestCase):
         self.assertIsNone(listed["dropoff_pin"])
 
     def test_edit_keeps_past_time_but_rejects_moving_into_past(self):
-        ride_id = self.create().json()["id"]
-        ride = Ride.objects.get()
-        ride.pickup_time = local(timezone.localdate() - timedelta(days=1), 10)  # pretend it was yesterday
-        ride.save()
-        same = self.client.patch(f"/api/rides/{ride_id}/", {"pickup_time": timezone.localtime(ride.pickup_time).isoformat(),
-                                 "driver": None}, content_type="application/json")
-        self.assertEqual(same.status_code, 200, same.json())
-        moved = self.client.patch(f"/api/rides/{ride_id}/", {"pickup_time": f"{timezone.localdate() - timedelta(days=1)}T11:00"},
-                                  content_type="application/json")
-        self.assertEqual(moved.status_code, 400)
+        """Before 8 AM, yesterday's rides are still editable (not yet archived):
+        saving one with its own time works; moving a ride into the past doesn't.
+        The clock is frozen at 7 AM so this holds whenever the tests run."""
+        from datetime import date
+
+        today = date(2026, 10, 14)
+        yesterday = today - timedelta(days=1)
+        seven_am = mock.patch("django.utils.timezone.now", return_value=local(today, 7))
+        ride = Ride.objects.create(
+            rider_name="R", rider_phone="8055550101", rider_email="r@ucsb.edu", pickup_time=local(yesterday, 10),
+            pickup_name="A", dropoff_name="B", driver=self.driver,
+        )
+        with seven_am:
+            same = self.client.patch(f"/api/rides/{ride.id}/", {"pickup_time": f"{yesterday}T10:00", "driver": None},
+                                     content_type="application/json")
+            self.assertEqual(same.status_code, 200, same.json())
+            moved = self.client.patch(f"/api/rides/{ride.id}/", {"pickup_time": f"{yesterday}T11:00"},
+                                      content_type="application/json")
+            self.assertEqual(moved.status_code, 400)
 
     def test_unassigned_allowed(self):
         r = self.create(driver=None)

@@ -54,11 +54,11 @@ export default function ArchivePage() {
 
   return (
     <section className="stack">
-      <div className="page-header">
+      <div>
         <h1>Archive</h1>
         <p className="muted archive-note">
           Each day's rides move here at {formatHour(config.archive_hour)} the next morning and are kept for {retention}{" "}
-          days.
+          days. Archived rides can't be changed.
         </p>
       </div>
 
@@ -78,6 +78,7 @@ export default function ArchivePage() {
       {days && days.length > 0 && (
         <div className="archive-layout">
           <nav className="archive-days" aria-label="Archived days">
+            <span className="archive-days-title">Archived days</span>
             {days.map((d) => (
               <button
                 key={d.date}

@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 // Phone-shaped column used by the driver and rider views. On a desktop it
 // stays phone-width, centered, with plain bars on either side.
 export default function MobileLayout({ title, actions, children }) {
@@ -11,6 +13,9 @@ export default function MobileLayout({ title, actions, children }) {
           </header>
         )}
         <main className="mobile-main">{children}</main>
+        <footer className="mobile-footer">
+          <Link to="/privacy">Privacy</Link>
+        </footer>
       </div>
     </div>
   );

@@ -44,6 +44,9 @@ def session_payload(request):
             "archive_retention_days": settings.ARCHIVE_RETENTION_DAYS,
             # For drawing the driver's own GPS on the campus map (see rides/geo.py).
             "map_calibration": frontend_calibration(),
+            # Shown on public pages (rider page, privacy policy).
+            "dispatch_phone": settings.DISPATCH_PHONE,
+            "privacy_contact_email": settings.PRIVACY_CONTACT_EMAIL,
         },
     }
     if user.is_authenticated:

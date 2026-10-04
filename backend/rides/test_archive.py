@@ -104,6 +104,18 @@ class ArchiveTests(TestCase):
             self.client.get("/api/rides/")
         self.assertFalse(Ride.objects.exists())
 
+    def test_stale_driver_locations_deleted_after_a_day(self):
+        from .models import DriverLocation
+
+        fresh = Driver.objects.create(email="f@ucsb.edu", name="Fresh", color="#d93025")
+        with at(D - timedelta(days=2), 9):
+            DriverLocation.objects.create(driver=self.driver, lat=34.41, lng=-119.84)
+        with at(D, 8, 30):
+            DriverLocation.objects.create(driver=fresh, lat=34.41, lng=-119.84)
+        with at(D, 9):
+            purge_expired()
+        self.assertEqual(list(DriverLocation.objects.values_list("driver__name", flat=True)), ["Fresh"])
+
     def test_archive_is_admin_only(self):
         driver_user = User.objects.create(username="d@ucsb.edu", email="d@ucsb.edu")
         self.client.force_login(driver_user)

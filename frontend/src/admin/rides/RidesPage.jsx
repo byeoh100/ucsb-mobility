@@ -4,9 +4,7 @@ import { driversApi, ridesApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import Modal from "../../components/Modal.jsx";
-import { archiveCutoffIn, isValidDate, todayIn } from "../../lib/time.js";
-
-import { campusParts, formatTime } from "../../lib/time.js";
+import { archiveCutoffIn, campusParts, formatTime, isValidDate, todayIn } from "../../lib/time.js";
 import DateNav from "./DateNav.jsx";
 import RideForm from "./RideForm.jsx";
 import RideTable from "./RideTable.jsx";
@@ -97,6 +95,8 @@ export default function RidesPage() {
         </div>
       </div>
 
+      {rides && !archived && rides.length > 0 && <DaySummary rides={rides} />}
+
       {error && (
         <p className="error" role="alert">
           {error} <button className="button-quiet" onClick={load}>Try again</button>
@@ -176,5 +176,25 @@ export default function RidesPage() {
         )}
       </ConfirmDialog>
     </section>
+  );
+}
+
+// "1 unassigned · 2 on the way · 5 completed": the day at a glance.
+function DaySummary({ rides }) {
+  const count = (test) => rides.filter(test).length;
+  const items = [
+    { n: count((r) => !r.driver), label: "unassigned", tone: "warn" },
+    { n: count((r) => r.status === "on_the_way"), label: "on the way", tone: "ok" },
+    { n: count((r) => r.status === "not_confirmed"), label: "not started" },
+    { n: count((r) => r.status === "completed"), label: "completed" },
+  ];
+  return (
+    <p className="day-summary" aria-label="Day summary">
+      {items.map((item) => (
+        <span key={item.label} className={`day-stat${item.n > 0 && item.tone ? ` day-stat-${item.tone}` : ""}`}>
+          <strong>{item.n}</strong> {item.label}
+        </span>
+      ))}
+    </p>
   );
 }

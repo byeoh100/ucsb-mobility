@@ -86,7 +86,17 @@ export default function DriverHome() {
 
   return (
     <MobileLayout
-      title={user.driver ? `${user.driver.name}` : "Cart Dispatch"}
+      title={
+        user.driver ? (
+          <>
+            {/* The color dispatch uses for this driver's rides */}
+            <span className="swatch header-swatch" style={{ background: user.driver.color }} aria-hidden="true" />
+            {user.driver.name}
+          </>
+        ) : (
+          "Cart Dispatch"
+        )
+      }
       actions={<button className="button-quiet" onClick={signOut}>Sign out</button>}
     >
       <div className="stack driver-home">
@@ -99,12 +109,12 @@ export default function DriverHome() {
           </button>
         </div>
 
-        <div className="day-switch">
-          <button className="button-quiet icon-button" onClick={() => update({ date: shiftDate(date, -1) })} disabled={isToday} aria-label="Previous day">‹</button>
+        <div className="day-switch date-stepper">
+          <button className="stepper-button" onClick={() => update({ date: shiftDate(date, -1) })} disabled={isToday} aria-label="Previous day">‹</button>
           <span className="day-switch-label">
             {isToday ? "Today" : date === shiftDate(today, 1) ? "Tomorrow" : formatDayLabel(date)}
           </span>
-          <button className="button-quiet icon-button" onClick={() => update({ date: shiftDate(date, 1) })} aria-label="Next day">›</button>
+          <button className="stepper-button" onClick={() => update({ date: shiftDate(date, 1) })} aria-label="Next day">›</button>
         </div>
 
         {error && (

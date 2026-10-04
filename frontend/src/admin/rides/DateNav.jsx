@@ -9,16 +9,18 @@ export default function DateNav({ date, today, onChange }) {
 
   return (
     <div className="date-nav">
-      <button className="button-quiet icon-button" onClick={() => onChange(shiftDate(date, -1))} aria-label="Previous day">
-        ‹
-      </button>
-      <div className="date-label">
-        <span className="date-main">{formatDayLabel(date)}</span>
-        {relative && <span className="date-relative">{relative}</span>}
+      <div className="date-stepper">
+        <button className="stepper-button" onClick={() => onChange(shiftDate(date, -1))} aria-label="Previous day">
+          ‹
+        </button>
+        <div className="date-label">
+          <span className="date-main">{formatDayLabel(date)}</span>
+          {relative && <span className="date-relative">{relative}</span>}
+        </div>
+        <button className="stepper-button" onClick={() => onChange(shiftDate(date, 1))} aria-label="Next day">
+          ›
+        </button>
       </div>
-      <button className="button-quiet icon-button" onClick={() => onChange(shiftDate(date, 1))} aria-label="Next day">
-        ›
-      </button>
       <button className="button-quiet" onClick={() => onChange(today)} disabled={date === today}>
         Today
       </button>

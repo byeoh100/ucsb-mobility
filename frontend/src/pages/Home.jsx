@@ -53,7 +53,10 @@ export default function Home() {
   return (
     <MobileLayout title="Cart Dispatch" actions={headerAction}>
       <form className="stack" onSubmit={lookUp} noValidate>
-        <h1>Find your ride</h1>
+        <div>
+          <h1>Find your ride</h1>
+          <p className="muted lead">Enter the phone number dispatch has on file for you.</p>
+        </div>
         <label className="field">
           Phone number
           <PhoneInput
@@ -71,6 +74,17 @@ export default function Home() {
         </button>
         {error && <p className="error" role="alert">{error}</p>}
       </form>
+
+      {!rides && (
+        <section className="how-it-works">
+          <h2 className="section-title">On your ride page</h2>
+          <ul>
+            <li>See when your driver is on the way, starting 15 minutes before pickup</li>
+            <li>Follow your driver on the campus map</li>
+            <li>Mark exactly where you'll be waiting (optional)</li>
+          </ul>
+        </section>
+      )}
 
       {rides && (
         <section className="stack lookup-results" aria-live="polite">

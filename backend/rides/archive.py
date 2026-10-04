@@ -6,6 +6,7 @@ Like ride status, this is worked out from the clock rather than by a job:
     morning. (Before 8 AM, yesterday's rides are still on the main list.)
   - Archived rides are kept for ARCHIVE_RETENTION_DAYS (default 30), then
     deleted by purge_expired(), which the API calls as pages load.
+  - Drivers' last GPS fix is deleted after a day by the same cleanup.
 """
 
 from datetime import timedelta
@@ -35,9 +36,16 @@ def purge_before(now=None):
     return archive_cutoff(now) - timedelta(days=settings.ARCHIVE_RETENTION_DAYS)
 
 
-def purge_expired(now=None):
-    """Delete rides past the retention window. Cheap: one indexed DELETE."""
-    from .models import Ride
+# Drivers' last GPS fix is only useful during a ride; drop it after a day.
+LOCATION_RETENTION = timedelta(days=1)
 
+
+def purge_expired(now=None):
+    """Delete rides past the retention window, and stale driver locations.
+    Cheap: indexed DELETEs, run as pages load. Returns rides deleted."""
+    from .models import DriverLocation, Ride
+
+    now = now or timezone.now()
     deleted, _ = Ride.objects.filter(pickup_time__date__lt=purge_before(now)).delete()
+    DriverLocation.objects.filter(updated_at__lt=now - LOCATION_RETENTION).delete()
     return deleted

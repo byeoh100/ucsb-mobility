@@ -56,9 +56,10 @@ export default function RideCard({ ride, mine, canStart, timeZone, onChanged, hi
       </div>
 
       <dl className="ride-card-route">
-        <dt>Pick up</dt>
+        {/* Same colored dots as the map pins and the rider's page */}
+        <dt className="legend legend-pickup">Pick up</dt>
         <dd>{ride.pickup_name}</dd>
-        <dt>Drop off</dt>
+        <dt className="legend legend-dropoff">Drop off</dt>
         <dd>{ride.dropoff_name}</dd>
         {!mine && (
           <>

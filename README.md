@@ -47,6 +47,7 @@ frontend/src/
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
 | `/api/location/` | driver's phone reporting GPS (only accepted while a ride is on the way) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
+| `/privacy` | privacy policy (public; linked from Google's consent screen) |
 | `/r/<token>` | a rider's page for one ride (public; the token is the key) |
 | `/api/r/<token>/`, `/confirm/`, `/pins/` | rider page data, thumbs up, pins (public) |
 | `/api/lookup/?phone=` | rides by phone number (public, 10 lookups/min per visitor) |
@@ -133,6 +134,7 @@ You need an OAuth client ID. There's no client secret, because the browser gets 
    - your deployed URL, e.g. `https://cart-dispatch.onrender.com`
    No redirect URIs are needed.
 5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`) into `GOOGLE_CLIENT_ID` in `backend/.env`, and restart Django.
+6. After deploying, fill in **Branding** in Google Auth Platform: **App home page** `https://<your-app>/` and **Privacy policy** `https://<your-app>/privacy`. Google requires real public addresses (not localhost); for an app that only asks for name and email, these are optional, but they make the consent screen trustworthy.
 
 If the Google button says the origin isn't allowed, the exact URL in your address bar (scheme, host, and port) is missing from step 4. New origins can take a few minutes to start working.
 
@@ -163,7 +165,8 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
 | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |
-| `DISPATCH_PHONE` | recommended | dispatch's number, shown on rider pages |
+| `DISPATCH_PHONE` | recommended | dispatch's number, shown on rider pages and the privacy policy |
+| `PRIVACY_CONTACT_EMAIL` | recommended | contact for privacy questions, shown on `/privacy` |
 | `ARCHIVE_RETENTION_DAYS` | optional | days archived rides are kept (default 30) |
 | `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` | custom domains | see above |
 
@@ -177,8 +180,10 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
 - Rider page phases (`rides/rider_page.py`): more than 15 min before pickup it shows details and lets riders place pins; from 15 min before to 15 min after it's live (status, drop-offs away, driver's position, 👍 once the driver is on the way); once the driver starts their next ride it says the ride is complete; after the window the link shows nothing but "expired".
-- Location privacy: phones send GPS only while their driver has a ride on the way; the server keeps just the latest fix per driver and only shows it during that ride, and only ever as a position on the map image (raw GPS never leaves the server). The phone's screen is kept awake while sharing, since browsers pause GPS when it locks.
+- The privacy policy (`frontend/src/pages/Privacy.jsx`) describes what the app actually does. If you change what's collected, who sees it, or how long it's kept, update it. The program (and UCSB, if required) should review the wording.
+- Location privacy: phones send GPS only while their driver has a ride on the way; the server keeps just the latest fix per driver, deletes it after a day, and only shows it during that ride, and only ever as a position on the map image (raw GPS never leaves the server). The phone's screen is kept awake while sharing, since browsers pause GPS when it locks.
 - `components/CampusMap.jsx` draws the campus image with the rider's pins (tips anchored exactly on the stored point); the rider page will reuse it.
+- Styling follows UCSB's brand guidelines (brand.ucsb.edu): the digital color palette is defined once at the top of `frontend/src/styles.css` (use those variables, not new hex values), and the font is Nunito Sans, UCSB's approved web substitute for Avenir, served by the app itself (`@fontsource/nunito-sans`). The app uses UCSB colors and type but not UCSB logos or marks, which require approval from UCSB's brand office.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
 - Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).
 - New admin pages go in `frontend/src/admin/` and get a route under `/admin` in `App.jsx`.
