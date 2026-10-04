@@ -173,8 +173,33 @@ function RideLinkCell({ token }) {
   return (
     <span className="link-cell">
       <a className="button-quiet button-small" href={`/r/${token}`} target="_blank" rel="noreferrer">Open</a>
-      <button className="button-quiet button-small" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+      <button
+        className={`button-quiet icon-only${copied ? " copied" : ""}`}
+        onClick={copy}
+        title={copied ? "Copied" : "Copy rider link"}
+        aria-label={copied ? "Copied" : "Copy rider link"}
+      >
+        {copied ? <CheckIcon /> : <LinkIcon />}
+      </button>
     </span>
+  );
+}
+
+// Chain-link and check icons (stroke icons, drawn in the button's text color).
+function LinkIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
   );
 }
 

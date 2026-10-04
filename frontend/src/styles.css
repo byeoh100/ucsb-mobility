@@ -598,3 +598,14 @@ select {
 .mark-complete { padding: 0.65rem; font-weight: 700; }
 .ride-card-actions .hint { text-align: center; margin-top: -0.3rem; }
 .marked-complete { color: var(--text); }
+
+/* Icon buttons (copy link) */
+.icon { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.icon-only { padding: 0.3rem 0.45rem; line-height: 0; }
+.icon-only.copied { color: var(--success); border-color: var(--success); }
+
+/* Hide completed */
+.summary-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: -0.25rem; }
+.summary-row .day-summary { margin: 0; }
+.toggle { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; font-weight: 600; color: var(--text); cursor: pointer; }
+.toggle input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); margin: 0; }

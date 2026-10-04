@@ -32,6 +32,7 @@ export default function RidesPage() {
   // null = form closed, { ride: null } = adding, { ride } = editing
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null); // ride pending deletion
+  const [hideCompleted, setHideCompleted] = useHideCompleted();
 
   // Drivers for the form's dropdown.
   useEffect(() => {
@@ -64,8 +65,10 @@ export default function RidesPage() {
     };
   }, [load]);
 
-  const unassigned = rides?.filter((r) => !r.driver) ?? [];
-  const assigned = rides?.filter((r) => r.driver) ?? [];
+  const shown = (rides ?? []).filter((r) => !(hideCompleted && r.status === "completed"));
+  const hiddenCount = (rides?.length ?? 0) - shown.length;
+  const unassigned = shown.filter((r) => !r.driver);
+  const assigned = shown.filter((r) => r.driver);
   const tableProps = {
     timeZone,
     sort,
@@ -95,7 +98,15 @@ export default function RidesPage() {
         </div>
       </div>
 
-      {rides && !archived && rides.length > 0 && <DaySummary rides={rides} />}
+      {rides && !archived && rides.length > 0 && (
+        <div className="summary-row">
+          <DaySummary rides={rides} />
+          <label className="toggle">
+            <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} />
+            Hide completed
+          </label>
+        </div>
+      )}
 
       {error && (
         <p className="error" role="alert">
@@ -118,7 +129,20 @@ export default function RidesPage() {
             <RideTable rides={assigned} {...tableProps} />
           ) : (
             <div className="empty-state">
-              <p>{rides.length === 0 ? "No rides on this day." : "No assigned rides on this day."}</p>
+              <p>
+                {rides.length === 0
+                  ? "No rides on this day."
+                  : shown.length === 0
+                    ? "All of this day's rides are completed."
+                    : hiddenCount > 0
+                      ? "No other assigned rides."
+                      : "No assigned rides on this day."}
+              </p>
+              {hiddenCount > 0 && (
+                <button className="button-quiet" onClick={() => setHideCompleted(false)}>
+                  Show {hiddenCount} completed
+                </button>
+              )}
             </div>
           )}
         </>
@@ -197,4 +221,25 @@ function DaySummary({ rides }) {
       ))}
     </p>
   );
+}
+
+// "Hide completed" preference, remembered in this browser.
+const HIDE_KEY = "rides.hideCompleted";
+function useHideCompleted() {
+  const [value, setValue] = useState(() => {
+    try {
+      return localStorage.getItem(HIDE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  function update(next) {
+    setValue(next);
+    try {
+      localStorage.setItem(HIDE_KEY, String(next));
+    } catch {
+      /* storage unavailable: just don't remember it */
+    }
+  }
+  return [value, update];
 }
