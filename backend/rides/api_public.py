@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
 from common.phone import normalize_phone
@@ -74,14 +74,40 @@ class RiderPinsView(Public):
         return Response(page_payload(ride))
 
 
+class PhoneNumberThrottle(SimpleRateThrottle):
+    """Limits lookups of any one phone number, whoever is asking."""
+
+    scope = "ride_lookup_number"
+
+    def get_cache_key(self, request, view):
+        import hashlib
+
+        try:
+            phone = normalize_phone(request.query_params.get("phone", ""))
+        except Exception:
+            return None  # invalid numbers are rejected by the view anyway
+        # Hashed, so phone numbers aren't stored in the cache as-is.
+        return f"throttle_lookup_number_{hashlib.sha256(phone.encode()).hexdigest()[:32]}"
+
+
+class GlobalLookupThrottle(SimpleRateThrottle):
+    """A ceiling on lookups across everyone, so numbers can't be trawled."""
+
+    scope = "ride_lookup_global"
+
+    def get_cache_key(self, request, view):
+        return "throttle_lookup_global"
+
+
 class RideLookupView(Public):
     """GET /api/lookup/?phone=...: a rider's upcoming rides by phone number.
 
     Only today-and-later rides whose links haven't expired; only time and
-    route. Rate-limited (10/min per visitor) so numbers can't be trawled.
+    route. Rate-limited per visitor, per phone number, and overall, so
+    numbers can't be trawled and no one number can be looked up repeatedly.
     """
 
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ScopedRateThrottle, PhoneNumberThrottle, GlobalLookupThrottle]
     throttle_scope = "ride_lookup"
 
     def get(self, request):

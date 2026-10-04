@@ -67,6 +67,10 @@ class RideViewSet(viewsets.ModelViewSet):
             if day < archive_cutoff():
                 return rides.none()  # archived: see /api/archive/
             rides = rides.filter(pickup_time__date=day)
+        elif not viewer_for(self.request)["is_admin"]:
+            # Drivers can open a single ride only if it isn't archived; the
+            # archive is dispatch-only.
+            rides = rides.filter(pickup_time__date__gte=archive_cutoff())
         return rides
 
     def requested_date(self):

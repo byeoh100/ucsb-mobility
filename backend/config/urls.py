@@ -5,6 +5,7 @@ admin.site.site_title = "Cart Dispatch"
 from django.http import JsonResponse
 from django.urls import include, path, re_path
 
+from .admin_guard import guarded_admin_login
 from .spa import spa_index
 
 
@@ -13,6 +14,9 @@ def health(request):
 
 
 urlpatterns = [
+    # Developer login, with a lockout on repeated wrong passwords (must come
+    # before the admin's own URLs so it takes precedence).
+    path("django-admin/login/", guarded_admin_login),
     path("django-admin/", admin.site.urls),
     path("api/health/", health),
     path("api/auth/", include("accounts.urls")),

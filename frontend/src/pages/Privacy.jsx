@@ -52,8 +52,13 @@ export default function Privacy() {
             kept, and it's deleted within a day. Location is never collected from riders.
           </li>
           <li>
-            <strong>Cookies.</strong> A sign-in cookie that keeps you signed in, and a security cookie that protects
-            forms. No advertising, analytics, or tracking cookies.
+            <strong>Cookies and browser storage.</strong> A sign-in cookie that keeps you signed in, a security cookie
+            that protects forms, and display preferences (like hiding completed rides) saved in your own browser. No
+            advertising, analytics, or tracking cookies.
+          </li>
+          <li>
+            <strong>Server logs.</strong> Like most websites, our hosting provider keeps standard server logs, such as
+            IP addresses and the pages requested, for a limited time to run and secure the service.
           </li>
         </ul>
 

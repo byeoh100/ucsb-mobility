@@ -122,6 +122,14 @@ If Google or UCSB sign-in isn't working, two backup accounts can sign in with a 
 - The backup driver's profile is created on its first sign-in, with the first free color. Dispatch can rename it or change its color on the Drivers page.
 - Backup accounts can't use `/django-admin/`, and don't affect the bootstrap admin.
 
+## Security notes
+
+- **Rate limits and lockouts:** phone lookup is limited per visitor (10/min), per phone number (20/hour, from any address), and overall (600/hour). Backup sign-in locks a username for 5 minutes after 10 wrong passwords, and `/django-admin/` locks for 15 minutes after 10. In production these counters live in the database (`start.sh` runs `createcachetable`), so all server processes share them.
+- **Visitor addresses behind Render:** the per-visitor limit trusts only the address Render's proxy adds (`TRUSTED_PROXY_COUNT`, default 1 on Render, 0 locally). Change it only if you put another proxy (like Cloudflare) in front.
+- **Who can read what:** rides are visible to drivers only for today and later; the archive is dispatch-only; ride progress is visible only to dispatch and the assigned driver; raw GPS never leaves the server.
+- **Links:** rider links are 128-bit random tokens, and the `same-origin` referrer policy keeps them from leaking to other sites. They do appear in the host's request logs.
+- **Checked before the pilot:** Django's production security audit, dependency vulnerability scans (`pip-audit`, `npm audit`), and probes for script injection, open redirects, and permission gaps. Rerun the scans after updating packages.
+
 ## Developer access (`/django-admin/`)
 
 Django's built-in admin is a raw database editor for developers. It uses Django's default rules: only **superuser** accounts, which sign in with a username and password. Google sign-in never grants access, so dispatchers (on the admin list) only ever see the React admin pages.
@@ -179,6 +187,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `BOOTSTRAP_ADMIN_EMAIL` | both | seeds the first admin |
 | `ALLOWED_EMAIL_DOMAINS` | optional | list domains, comma-separated (default `ucsb.edu`) |
 | `FALLBACK_DISPATCH_PASSWORD`, `FALLBACK_DRIVER_PASSWORD` | optional | backup sign-in passwords (blank = off) |
+| `TRUSTED_PROXY_COUNT` | optional | proxies in front of the app (default 1 on Render, 0 locally) |
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
 | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |

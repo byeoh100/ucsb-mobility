@@ -2,6 +2,7 @@
 # Runs each time the container starts.
 set -e
 python manage.py migrate --noinput
+python manage.py createcachetable   # shared counters for rate limits and lockouts
 
 # Create the developer superuser for /django-admin/ from env vars, if set.
 # Skipped once the account exists, so it's safe to leave the vars in place.

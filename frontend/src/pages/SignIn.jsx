@@ -6,8 +6,10 @@ import GoogleButton from "../auth/GoogleButton.jsx";
 import MobileLayout from "../layouts/MobileLayout.jsx";
 
 // Only follow ?next= to paths on this site.
+// Only follow ?next= to plain paths on this site. Backslashes are refused
+// too: browsers treat "/\\example.com" like "//example.com".
 function safeNext(value) {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") ? value : null;
 }
 
 export default function SignIn() {

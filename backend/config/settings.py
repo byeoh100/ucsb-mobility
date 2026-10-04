@@ -177,8 +177,28 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
-    # Public endpoints (phone lookup) are rate-limited per visitor.
-    "DEFAULT_THROTTLE_RATES": {"ride_lookup": "10/min"},
+    # Public phone lookup limits (rides/api_public.py): per visitor, per
+    # phone number (so one person can't be looked up over and over, whatever
+    # address it comes from), and overall (bounds trawling through numbers).
+    "DEFAULT_THROTTLE_RATES": {
+        "ride_lookup": "10/min",
+        "ride_lookup_number": "20/hour",
+        "ride_lookup_global": "600/hour",
+    },
+    # How many proxies sit in front of the app. Render has one, which adds the
+    # visitor's real address to X-Forwarded-For; trusting only that entry
+    # stops visitors from faking their address to dodge the per-visitor limit.
+    # Locally (0) the direct connection address is used.
+    "NUM_PROXIES": int(os.environ.get("TRUSTED_PROXY_COUNT", "1" if os.environ.get("RENDER_EXTERNAL_HOSTNAME") else "0")),
+}
+
+# Rate limits and lockouts count attempts in the cache. In production that's
+# the database, so all server processes share one count and restarts don't
+# reset it (start.sh creates the table). Locally, plain memory is fine.
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    if DEBUG
+    else {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "cache_table"}
 }
 
 # Stay signed in for two weeks so drivers aren't re-signing in every shift.
