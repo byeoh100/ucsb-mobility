@@ -43,8 +43,8 @@ export default function Privacy() {
             <strong>Map pins (optional).</strong> Riders may mark their pickup and drop-off spots on the campus map.
           </li>
           <li>
-            <strong>Ride progress.</strong> When a driver starts a ride ("On the way") and whether the rider confirmed
-            they'll be there.
+            <strong>Ride progress.</strong> When a driver starts a ride ("On the way"), when they mark it complete (if
+            they do), and whether the rider confirmed they'll be there.
           </li>
           <li>
             <strong>Driver location.</strong> Only while a driver has a ride marked "On the way", their phone shares its

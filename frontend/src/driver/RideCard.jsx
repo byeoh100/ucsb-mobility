@@ -12,6 +12,7 @@ import { formatTime } from "../lib/time.js";
 //   ride        the ride
 //   mine        is it the signed-in driver's ride?
 //   canStart    mine, today, and not completed
+//   canReopen   mine, today, and marked complete by the driver
 //   timeZone    campus time zone
 //   onChanged   () => void, after On the way / Undo, to refresh the list
 //   highlight   "current" | "next" | undefined, for emphasis
@@ -19,7 +20,7 @@ import { formatTime } from "../lib/time.js";
 //               screen isn't two full-size maps tall)
 //   you         { x, y, onMap } the driver's own position on the map, if known
 //   sharing     location-sharing state, shown on the ride that's on the way
-export default function RideCard({ ride, mine, canStart, timeZone, onChanged, highlight, mapOpen = false, you, sharing }) {
+export default function RideCard({ ride, mine, canStart, canReopen, timeZone, onChanged, highlight, mapOpen = false, you, sharing }) {
   const [busy, setBusy] = useState(false);
   const [showMap, setShowMap] = useState(mapOpen);
   const [error, setError] = useState("");
@@ -104,10 +105,25 @@ export default function RideCard({ ride, mine, canStart, timeZone, onChanged, hi
           </button>
         )}
         {canStart && onTheWay && (
-          <div className="otw-done">
-            <span>On the way since {formatTime(ride.started_at, timeZone)}</span>
-            <button className="button-quiet" onClick={() => run(ridesApi.unstart)} disabled={busy}>
-              Undo
+          <>
+            <div className="otw-done">
+              <span>On the way since {formatTime(ride.started_at, timeZone)}</span>
+              <button className="button-quiet" onClick={() => run(ridesApi.unstart)} disabled={busy}>
+                Undo
+              </button>
+            </div>
+            {/* Optional: if not tapped, the ride completes on its own. */}
+            <button className="button-quiet mark-complete" onClick={() => run(ridesApi.complete)} disabled={busy}>
+              ✓ Mark complete
+            </button>
+            <span className="hint">Optional, if you finish early. Closes the rider's page now.</span>
+          </>
+        )}
+        {canReopen && (
+          <div className="otw-done marked-complete">
+            <span>Marked complete at {formatTime(ride.completed_at, timeZone)}</span>
+            <button className="button-quiet" onClick={() => run(ridesApi.reopen)} disabled={busy}>
+              Reopen
             </button>
           </div>
         )}

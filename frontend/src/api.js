@@ -48,6 +48,7 @@ export const authApi = {
   session: () => request("/auth/session/"),
   google: (credential) => request("/auth/google/", { method: "POST", body: { credential } }),
   dev: (email) => request("/auth/dev/", { method: "POST", body: { email } }),
+  backup: (username, password) => request("/auth/backup/", { method: "POST", body: { username, password } }),
   signOut: () => request("/auth/sign-out/", { method: "POST" }),
 };
 
@@ -66,6 +67,8 @@ export const ridesApi = {
   remove: (id) => request(`/rides/${id}/`, { method: "DELETE" }),
   start: (id) => request(`/rides/${id}/start/`, { method: "POST" }),
   unstart: (id) => request(`/rides/${id}/unstart/`, { method: "POST" }),
+  complete: (id) => request(`/rides/${id}/complete/`, { method: "POST" }),
+  reopen: (id) => request(`/rides/${id}/reopen/`, { method: "POST" }),
 };
 
 export const archiveApi = {

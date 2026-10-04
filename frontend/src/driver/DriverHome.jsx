@@ -60,6 +60,7 @@ export default function DriverHome() {
       ride,
       mine,
       canStart: mine && isToday && ride.status !== "completed",
+      canReopen: mine && isToday && Boolean(ride.completed_at),
       timeZone,
       onChanged: load,
     };

@@ -5,12 +5,15 @@ import { useAuth } from "./AuthProvider.jsx";
 // Wraps routes that need a signed-in user with one of the given roles.
 // Admins can open every page, since other profiles are slices of theirs.
 export default function RequireRole({ roles, children }) {
-  const { user } = useAuth();
+  const { user, signedOutOnPurpose } = useAuth();
   const location = useLocation();
 
   if (user === undefined) return <p className="page-status">Loading…</p>;
 
   if (!user) {
+    // Remember where they were (e.g. an expired session), unless they just
+    // signed out themselves; then the next person starts fresh.
+    if (signedOutOnPurpose) return <Navigate to="/sign-in" replace />;
     const next = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/sign-in?next=${next}`} replace />;
   }

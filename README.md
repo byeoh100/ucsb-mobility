@@ -45,6 +45,7 @@ frontend/src/
 | `/api/drivers/` | driver list, add, edit, remove (admins only) |
 | `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
+| `/api/rides/<id>/complete/`, `/reopen/` | optional Mark complete / Reopen (assigned driver, ride on the way) |
 | `/api/location/` | driver's phone reporting GPS (only accepted while a ride is on the way) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
 | `/privacy` | privacy policy (public; linked from Google's consent screen) |
@@ -61,7 +62,7 @@ You need Python 3.12+ and Node 20.19+ (or 22.12+).
 
 ```bash
 cd backend
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                   # Windows: copy .env.example .env
@@ -105,6 +106,21 @@ To improve it, add points at features you can pinpoint on the image, like path i
 The real-world test is walking around campus with the driver view open on a ride: the blue "You" dot should follow you.
 
 **Testing on a real phone:** browsers only share location over HTTPS (or `localhost`). Opening your laptop's `http://192.168.x.x:5173` on a phone won't work; use the deployed site, or a tunnel like ngrok for development.
+
+## Backup sign-in
+
+If Google or UCSB sign-in isn't working, two backup accounts can sign in with a username and password on the sign-in page, under **Can't sign in with Google?**:
+
+| Username | Acts as | Password setting |
+|---|---|---|
+| `dispatch` | admin (full dispatch access) | `FALLBACK_DISPATCH_PASSWORD` |
+| `driver` | a driver named "Backup driver", which dispatch can assign rides to | `FALLBACK_DRIVER_PASSWORD` |
+
+- **Off by default:** an account works only while its password is set. Clearing the setting switches it off and also cuts off anyone signed in with it.
+- **Passwords live in settings, not code.** Simple ones are fine locally; on the live site use long, random passwords, since these accounts can see rider details and driver locations.
+- After 10 wrong passwords, that username is locked for 5 minutes.
+- The backup driver's profile is created on its first sign-in, with the first free color. Dispatch can rename it or change its color on the Drivers page.
+- Backup accounts can't use `/django-admin/`, and don't affect the bootstrap admin.
 
 ## Developer access (`/django-admin/`)
 
@@ -162,6 +178,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `GOOGLE_CLIENT_ID` | both | OAuth client ID |
 | `BOOTSTRAP_ADMIN_EMAIL` | both | seeds the first admin |
 | `ALLOWED_EMAIL_DOMAINS` | optional | list domains, comma-separated (default `ucsb.edu`) |
+| `FALLBACK_DISPATCH_PASSWORD`, `FALLBACK_DRIVER_PASSWORD` | optional | backup sign-in passwords (blank = off) |
 | `DEV_LOGIN` | local only | `true` shows the sign-in-as-anyone form |
 | `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | production | creates your developer account for `/django-admin/` |
 | `TIME_ZONE` | optional | default `America/Los_Angeles` |
@@ -174,7 +191,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 
 - API views use `accounts.permissions.IsAdmin` or `IsDriverOrAdmin`.
 - Phone numbers are stored as 10 digits (`common/phone.py`). `frontend/src/lib/phone.js` formats them as (805) - 555 - 0123, and `components/PhoneInput.jsx` is the typing-as-you-go input; reuse it for rider phones.
-- Ride status is computed, never stored (`rides/status.py`): *completed* 15 min after pickup or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
+- Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped the optional **Mark complete** (which can be undone with Reopen), 15 min after pickup, or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
 - Archiving is computed too (`rides/archive.py`): a day's rides leave the Rides page and become read-only at 8:00 AM the next morning. Rides older than `ARCHIVE_RETENTION_DAYS` are deleted by `purge_expired()`, which runs as the rides and archive pages load, so no scheduled job is needed. `seed_demo --date <past date>` fills the archive for testing.
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.

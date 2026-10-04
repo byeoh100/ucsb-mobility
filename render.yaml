@@ -25,6 +25,11 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_EMAIL
         sync: false
+      # Backup sign-in passwords; leave empty to keep backup sign-in off.
+      - key: FALLBACK_DISPATCH_PASSWORD
+        sync: false
+      - key: FALLBACK_DRIVER_PASSWORD
+        sync: false
       # Your developer login for /django-admin/ (separate from Google sign-in).
       - key: DJANGO_SUPERUSER_USERNAME
         sync: false

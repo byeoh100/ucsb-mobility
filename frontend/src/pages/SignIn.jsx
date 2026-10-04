@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router";
 import { authApi } from "../api.js";
-import { homeForRole, useAuth } from "../auth/AuthProvider.jsx";
+import { canOpen, homeForRole, useAuth } from "../auth/AuthProvider.jsx";
 import GoogleButton from "../auth/GoogleButton.jsx";
 import MobileLayout from "../layouts/MobileLayout.jsx";
 
@@ -16,7 +16,10 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const target = user ? safeNext(params.get("next")) || homeForRole(user.role) : null;
+  // Return to the page that asked for sign-in, if this role can use it;
+  // otherwise go to the role's own home page.
+  const next = safeNext(params.get("next"));
+  const target = user ? (next && canOpen(user.role, next) ? next : homeForRole(user.role)) : null;
 
   // Once signed in, the render below redirects; this only handles errors.
   async function finish(promise) {
@@ -45,12 +48,48 @@ export default function SignIn() {
           <p className="notice">Google sign-in isn't set up yet. Set GOOGLE_CLIENT_ID on the server.</p>
         )}
 
+        {config.backup_login && (
+          <BackupSignIn disabled={busy} onSubmit={(username, password) => finish(authApi.backup(username, password))} />
+        )}
+
         {config.dev_login && <DevSignIn disabled={busy} onSubmit={(email) => finish(authApi.dev(email))} />}
 
         {busy && <p className="muted">Signing in…</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </div>
     </MobileLayout>
+  );
+}
+
+// Backup sign-in, for when Google or UCSB sign-in isn't working. Only shown
+// while dispatch has a backup password set on the server.
+function BackupSignIn({ onSubmit, disabled }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  return (
+    <details className="backup-login">
+      <summary>Can't sign in with Google?</summary>
+      <form
+        className="stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(username, password);
+        }}
+      >
+        <p className="hint">Use the backup account dispatch gave you.</p>
+        <label className="field">
+          Username
+          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none" />
+        </label>
+        <label className="field">
+          Password
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+        </label>
+        <button className="button" type="submit" disabled={disabled || !username || !password}>
+          Sign in
+        </button>
+      </form>
+    </details>
   );
 }
 
