@@ -71,6 +71,19 @@ class LocationSharingTests(TestCase):
         self.assertEqual(DriverLocation.objects.count(), 1)
         self.assertEqual(DriverLocation.objects.get().lat, 34.4130)
 
+    def test_keeps_sharing_while_any_rider_is_on_board(self):
+        second = Ride.objects.create(
+            rider_name="Sky", rider_phone="8055550001", rider_email="s@ucsb.edu",
+            pickup_time=local(D, 10, 5), pickup_name="Library", dropoff_name="Bren Hall", driver=self.dana,
+        )
+        with at(D, 9, 50):
+            self.client.post(f"/api/rides/{self.ride.id}/start/")
+            self.client.post(f"/api/rides/{second.id}/start/")
+            self.client.post(f"/api/rides/{self.ride.id}/complete/")
+            self.assertEqual(self.send().status_code, 200)  # Sky is still on board
+            self.client.post(f"/api/rides/{second.id}/complete/")
+            self.assertEqual(self.send().status_code, 409)  # nobody left: sharing stops
+
     def test_stops_after_undo(self):
         with at(D, 9, 50):
             self.client.post(f"/api/rides/{self.ride.id}/start/")
@@ -100,7 +113,7 @@ class LocationSharingTests(TestCase):
         self.client.force_login(boss)
         with at(D, 9, 50, 30):
             driver = self.client.get("/api/drivers/").json()[0]
-        self.assertEqual(driver["current_ride"]["rider_name"], "Riley")
+        self.assertEqual(driver["current_rides"][0]["rider_name"], "Riley")
         loc = driver["location"]
         self.assertTrue(loc["on_map"] and loc["live"])
         self.assertEqual(loc["age_seconds"], 30)
@@ -108,10 +121,10 @@ class LocationSharingTests(TestCase):
         with at(D, 9, 52):
             self.assertFalse(self.client.get("/api/drivers/").json()[0]["location"]["live"])
         with at(D, 10, 30):  # late pickup: still on the way, still shown
-            self.assertEqual(self.client.get("/api/drivers/").json()[0]["current_ride"]["rider_name"], "Riley")
+            self.assertEqual(self.client.get("/api/drivers/").json()[0]["current_rides"][0]["rider_name"], "Riley")
         with at(D, 11, 0):  # 60 min cutoff: completed, no current ride, no location shown
             driver = self.client.get("/api/drivers/").json()[0]
-        self.assertEqual((driver["current_ride"], driver["location"]), (None, None))
+        self.assertEqual((driver["current_rides"], driver["location"]), ([], None))
 
     def test_session_has_calibration(self):
         config = self.client.get("/api/auth/session/").json()["config"]

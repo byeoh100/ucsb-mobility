@@ -42,12 +42,12 @@ class StatusTests(TestCase):
         self.assertEqual(s[late.id], NOT_CONFIRMED)  # a late driver can still start it
         self.assertEqual(s[expired.id], COMPLETED)
 
-    def test_starting_a_later_ride_completes_the_earlier_one(self):
+    def test_several_rides_on_the_way_at_once(self):
         now = local(self.day, 12, 0)
         first = self.ride(11, 55, started=local(self.day, 11, 45))
         second = self.ride(12, 5, started=local(self.day, 11, 58))
         s = statuses_for([first, second], now)
-        self.assertEqual((s[first.id], s[second.id]), (COMPLETED, ON_THE_WAY))
+        self.assertEqual((s[first.id], s[second.id]), (ON_THE_WAY, ON_THE_WAY))
 
     def test_late_pickup_stays_on_the_way(self):
         # Pilot day 1: a pickup well after its time must not close on its own.

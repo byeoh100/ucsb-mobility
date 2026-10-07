@@ -46,7 +46,7 @@ frontend/src/
 | `/api/dispatchers/` | dispatcher list, add, remove; never the last one (admins only) |
 | `/api/rides/?date=YYYY-MM-DD` | one day's rides (drivers and admins read; admins write) |
 | `/api/rides/<id>/start/`, `/unstart/` | driver taps On the way / Undo (assigned driver, today only) |
-| `/api/rides/<id>/complete/`, `/reopen/` | optional Mark complete / Reopen (assigned driver, ride on the way) |
+| `/api/rides/<id>/complete/`, `/reopen/` | Mark complete / Reopen (assigned driver, ride on the way) |
 | `/api/location/` | driver's phone reporting GPS (only accepted while a ride is on the way) |
 | `/api/archive/days/`, `/api/archive/?date=` | archived days and their rides, read-only (admins) |
 | `/privacy` | privacy policy (public; linked from Google's consent screen) |
@@ -214,7 +214,7 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 
 - API views use `accounts.permissions.IsAdmin` or `IsDriverOrAdmin`.
 - Phone numbers are stored as 10 digits (`common/phone.py`). `frontend/src/lib/phone.js` formats them as (805) - 555 - 0123, and `components/PhoneInput.jsx` is the typing-as-you-go input; reuse it for rider phones.
-- Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped the optional **Mark complete** (which can be undone with Reopen), once the same driver starts a later ride, or 60 min after pickup (`RIDE_CUTOFF`, a safety net for rides nobody closed; until then a late driver can still start the ride); *on the way* once `started_at` is set; otherwise *not confirmed*.
+- Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped **Mark complete** (which can be undone with Reopen) or 60 min after pickup (`RIDE_CUTOFF`, a safety net for rides nobody closed; until then a late driver can still start the ride); *on the way* once `started_at` is set; otherwise *not confirmed*. A driver can have several rides on the way at once (riders sharing the cart); starting one never ends another.
 - Archiving is computed too (`rides/archive.py`): a day's rides leave the Rides page and become read-only at 8:00 AM the next morning. Rides older than `ARCHIVE_RETENTION_DAYS` are deleted by `purge_expired()`, which runs as the rides and archive pages load, so no scheduled job is needed. `seed_demo --date <past date>` fills the archive for testing.
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Hours of operation (default 7:00 AM to 7:00 PM) are one setting, `SERVICE_START`/`SERVICE_END`, enforced by the server and shown by the ride form (`common/service_hours.py`).

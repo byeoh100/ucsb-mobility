@@ -21,28 +21,29 @@ class DriverSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=True)
     color = serializers.ChoiceField(choices=DRIVER_COLORS)
 
-    # For dispatch: what the driver is doing right now (read-only).
-    current_ride = serializers.SerializerMethodField()
+    # For dispatch: what the driver is doing right now (read-only). A list:
+    # riders can share the cart.
+    current_rides = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
 
     class Meta:
         model = Driver
-        fields = ["id", "email", "name", "phone", "color", "current_ride", "location"]
+        fields = ["id", "email", "name", "phone", "color", "current_rides", "location"]
 
-    def get_current_ride(self, driver):
-        from rides.tracking import current_ride
+    def get_current_rides(self, driver):
+        from rides.tracking import current_rides
 
-        ride = current_ride(driver)
-        if ride is None:
-            return None
-        return {
-            "id": ride.id,
-            "rider_name": ride.rider_name,
-            "pickup_time": ride.pickup_time.isoformat(),
-            "pickup_name": ride.pickup_name,
-            "dropoff_name": ride.dropoff_name,
-            "link_token": ride.link_token,
-        }
+        return [
+            {
+                "id": ride.id,
+                "rider_name": ride.rider_name,
+                "pickup_time": ride.pickup_time.isoformat(),
+                "pickup_name": ride.pickup_name,
+                "dropoff_name": ride.dropoff_name,
+                "link_token": ride.link_token,
+            }
+            for ride in current_rides(driver)
+        ]
 
     def get_location(self, driver):
         from rides.tracking import location_payload

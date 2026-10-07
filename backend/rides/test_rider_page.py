@@ -69,13 +69,17 @@ class RiderPageTests(TestCase):
             p = self.page()
         self.assertEqual(p, {"phase": "expired", "dispatch_phone": "8055550100"})
 
-    def test_complete_when_driver_starts_next_ride(self):
+    def test_complete_when_driver_marks_it(self):
         nxt = self.make(10, 20, rider="Next")
         self.ride.started_at = local(D, 9, 50)
         self.ride.save()
         nxt.started_at = local(D, 10, 5)
         nxt.save()
-        with at(10, 6):
+        with at(10, 6):  # another rider got on: this ride is still going
+            self.assertEqual(self.page()["phase"], "live")
+        self.ride.completed_at = local(D, 10, 8)
+        self.ride.save()
+        with at(10, 9):
             self.assertEqual(self.page()["phase"], "complete")
         with at(10, 20):
             self.assertEqual(self.page()["phase"], "expired")

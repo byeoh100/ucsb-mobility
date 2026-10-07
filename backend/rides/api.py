@@ -28,14 +28,7 @@ def parse_date(raw):
 
 
 def ride_statuses(rides):
-    # Include the same drivers' starts from other rides, so a ride is
-    # "completed" once its driver has started a later one, even if that
-    # later ride isn't in this list.
-    driver_ids = {r.driver_id for r in rides if r.driver_id}
-    starts = Ride.objects.filter(driver_id__in=driver_ids, started_at__isnull=False).values_list(
-        "driver_id", "started_at"
-    )
-    return statuses_for(rides, timezone.now(), other_starts=starts)
+    return statuses_for(rides, timezone.now())
 
 
 class RideViewSet(viewsets.ModelViewSet):
@@ -150,8 +143,9 @@ class RideViewSet(viewsets.ModelViewSet):
     def start(self, request, pk=None):
         """POST /api/rides/<id>/start/: the driver taps "On the way".
 
-        Starting a ride also completes the driver's previous one (see
-        rides/status.py), so drivers never have to mark rides done.
+        "Set as current" on the driver's screen. A driver can have several
+        rides on the way at once (riders sharing the cart); starting one
+        doesn't end the others.
         """
         ride, problem = self.own_ride_for_today(request)
         if problem:
@@ -178,9 +172,10 @@ class RideViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
-        """POST /api/rides/<id>/complete/: optional "Mark complete" when a ride
-        finishes early. Closes the rider's link (it shows "ride complete") and
-        stops location sharing. Without it, the ride completes on its own."""
+        """POST /api/rides/<id>/complete/: the driver drops this rider off.
+        Closes the rider's link (it shows "ride complete"); location sharing
+        stops once no ride is on the way. Without it, the ride ends on its
+        own RIDE_CUTOFF after pickup (see rides/status.py)."""
         ride, problem = self.own_ride_for_today(request)
         if problem:
             return problem
@@ -199,8 +194,7 @@ class RideViewSet(viewsets.ModelViewSet):
         if not ride.completed_at:
             return error("This ride wasn't marked complete.")
         ride.completed_at = None
-        # Only if it would actually be on the way again: not past its window,
-        # and the driver hasn't started a later ride since.
+        # Only if it would actually be on the way again (not past the cutoff).
         if self.statuses([ride])[ride.id] != ON_THE_WAY:
             return error("This ride can't be reopened anymore.")
         ride.save(update_fields=["completed_at", "updated_at"])
@@ -269,12 +263,12 @@ class LocationView(APIView):
 
     def post(self, request):
         from .models import DriverLocation
-        from .tracking import current_ride
+        from .tracking import current_rides
 
         driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
         if driver is None:
             return error("Only drivers share their location.", status.HTTP_403_FORBIDDEN)
-        if current_ride(driver) is None:
+        if not current_rides(driver):
             return Response({"sharing": False, "error": "No ride on the way."}, status=status.HTTP_409_CONFLICT)
         try:
             lat, lng = float(request.data["lat"]), float(request.data["lng"])

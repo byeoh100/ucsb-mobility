@@ -14,7 +14,7 @@ Phases, by the clock and the ride's status:
 from django.conf import settings
 from django.utils import timezone
 
-from .status import COMPLETED, LINK_WINDOW, ON_THE_WAY, statuses_for
+from .status import COMPLETED, LINK_WINDOW, ON_THE_WAY, status_of, statuses_for
 from .tracking import location_payload
 from .models import Ride
 
@@ -22,12 +22,8 @@ UPCOMING, LIVE, COMPLETE, EXPIRED = "upcoming", "live", "complete", "expired"
 
 
 def ride_status(ride, now):
-    """This ride's status, counting the driver's other rides (see status.py)."""
-    if not ride.driver_id:
-        return statuses_for([ride], now)[ride.id]
-    others = Ride.objects.filter(driver_id=ride.driver_id, started_at__isnull=False).exclude(id=ride.id)
-    starts = [(r.driver_id, r.started_at) for r in others]
-    return statuses_for([ride], now, other_starts=starts)[ride.id]
+    """This ride's status (see status.py)."""
+    return status_of(ride, now)
 
 
 def phase_of(ride, now, status=None):

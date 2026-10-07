@@ -126,9 +126,6 @@ def google_sign_in(request):
         return JsonResponse({"error": "Your Google account email isn't verified."}, status=400)
 
     sign_in(request, info["email"], info.get("given_name", ""), info.get("family_name", ""))
-    # Which account Google actually vouched for. On shared phones this tells
-    # "Google handed us the wrong account" apart from a problem in the app.
-    log.info("Google sign-in: %s (%s)", request.user.email, get_role(request.user))
     return JsonResponse(session_payload(request))
 
 

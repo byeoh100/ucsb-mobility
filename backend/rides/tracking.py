@@ -10,15 +10,15 @@ from .status import ON_THE_WAY, statuses_for
 LIVE_SECONDS = 60
 
 
-def current_ride(driver, now=None):
-    """The driver's ride that's on the way, or None."""
+def current_rides(driver, now=None):
+    """The driver's rides that are on the way (riders can share the cart),
+    in the order the driver started them."""
     now = now or timezone.now()
     started = list(
         Ride.objects.filter(driver=driver, started_at__isnull=False, pickup_time__date=timezone.localdate(now))
     )
     statuses = statuses_for(started, now)
-    on_the_way = [r for r in started if statuses[r.id] == ON_THE_WAY]
-    return max(on_the_way, key=lambda r: r.started_at) if on_the_way else None
+    return sorted((r for r in started if statuses[r.id] == ON_THE_WAY), key=lambda r: r.started_at)
 
 
 def location_payload(driver, now=None):
@@ -28,7 +28,7 @@ def location_payload(driver, now=None):
     the server; viewers get a position on the map image.
     """
     now = now or timezone.now()
-    if current_ride(driver, now) is None:
+    if not current_rides(driver, now):
         return None
     location = DriverLocation.objects.filter(driver=driver).first()
     if location is None:

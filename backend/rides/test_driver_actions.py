@@ -47,14 +47,27 @@ class DriverActionTests(TestCase):
         ride.refresh_from_db()
         self.assertEqual(ride.started_at, local(D, 9, 50))
 
-    def test_starting_next_ride_completes_previous(self):
+    def test_riders_can_share_the_cart(self):
+        # Starting another ride doesn't end the first: both riders are on board.
         first, second = self.ride(10), self.ride(10, 30)
         with at(D, 9, 50):
             self.start(first)
         with at(D, 10, 12):
             self.start(second)
             statuses = {r["id"]: r["status"] for r in self.client.get(f"/api/rides/?date={D}").json()}
+        self.assertEqual((statuses[first.id], statuses[second.id]), ("on_the_way", "on_the_way"))
+        with at(D, 10, 20):
+            self.client.post(f"/api/rides/{first.id}/complete/")
+            statuses = {r["id"]: r["status"] for r in self.client.get(f"/api/rides/?date={D}").json()}
         self.assertEqual((statuses[first.id], statuses[second.id]), ("completed", "on_the_way"))
+
+    def test_rides_can_start_out_of_order(self):
+        # Drivers group rides by where they are, not strictly by time.
+        early, late = self.ride(10), self.ride(10, 30)
+        with at(D, 9, 55):
+            self.assertEqual(self.start(late).status_code, 200)
+            statuses = {r["id"]: r["status"] for r in self.client.get(f"/api/rides/?date={D}").json()}
+        self.assertEqual((statuses[early.id], statuses[late.id]), ("not_confirmed", "on_the_way"))
 
     def test_start_twice_keeps_first_time(self):
         ride = self.ride(10)
@@ -223,7 +236,7 @@ class MarkCompleteTests(TestCase):
             self.assertEqual(self.rider_phase(), "live")
             self.assertEqual(self.post("reopen").status_code, 400)  # not marked complete anymore
 
-    def test_cannot_reopen_after_window_or_next_ride(self):
+    def test_reopen_works_after_starting_another_ride(self):
         nxt = Ride.objects.create(
             rider_name="N", rider_phone="8055550001", rider_email="n@ucsb.edu",
             pickup_time=local(D, 10, 10), pickup_name="A", dropoff_name="B", driver=self.dana,
@@ -233,7 +246,14 @@ class MarkCompleteTests(TestCase):
             self.post("complete")
         with at(D, 9, 55):
             self.assertEqual(self.post("start", nxt).status_code, 200)
-            self.assertEqual(self.post("reopen").status_code, 400)  # driver has moved on
+            self.assertEqual(self.post("reopen").status_code, 200)  # riders can share the cart
+
+    def test_cannot_reopen_after_cutoff(self):
+        with at(D, 9, 50):
+            self.post("start")
+            self.post("complete")
+        with at(D, 11, 0):  # 60 min after pickup
+            self.assertEqual(self.post("reopen").status_code, 400)
         self.ride.refresh_from_db()
         self.assertIsNotNone(self.ride.completed_at)  # failed reopen changed nothing
 
