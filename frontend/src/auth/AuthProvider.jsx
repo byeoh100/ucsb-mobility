@@ -21,15 +21,9 @@ export function AuthProvider({ children }) {
   });
   const [error, setError] = useState("");
 
-  // True right after a deliberate sign-out. RequireRole then sends you to a
-  // clean sign-in page instead of /sign-in?next=<the page you were on>, so the
-  // next person to sign in (say, a driver after dispatch) isn't sent there.
-  const [signedOutOnPurpose, setSignedOutOnPurpose] = useState(false);
-
   const applySession = useCallback((data) => {
     setUser(data.user);
     setConfig(data.config);
-    if (data.user) setSignedOutOnPurpose(false);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -46,14 +40,18 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
+  // Drivers share phones, so signing out wipes everything for the next person:
+  // Google's button forgets the last account, and a full page load clears every
+  // page's leftover state. Landing on plain /sign-in (no ?next=) means the next
+  // person isn't sent to the last person's page.
   const signOut = useCallback(async () => {
-    const data = await authApi.signOut();
-    setSignedOutOnPurpose(true);
-    applySession(data);
-  }, [applySession]);
+    await authApi.signOut();
+    window.google?.accounts?.id?.disableAutoSelect();
+    window.location.replace("/sign-in");
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, config, error, applySession, refresh, signOut, signedOutOnPurpose }}>
+    <AuthContext.Provider value={{ user, config, error, applySession, refresh, signOut }}>
       {children}
     </AuthContext.Provider>
   );

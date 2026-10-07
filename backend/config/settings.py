@@ -126,6 +126,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # API responses are per-person; browsers must not cache them (shared phones).
+    "config.no_store.NoStoreApiMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
