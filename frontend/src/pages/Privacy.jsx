@@ -35,7 +35,7 @@ export default function Privacy() {
             and it never sees your password.
           </li>
           <li>
-            <strong>Ride information.</strong> Dispatch enters each rider's name, phone number, UCSB email, pickup
+            <strong>Ride information.</strong> Dispatch enters each rider's name, phone number, UCSB email (optional), pickup
             time, and pickup and drop-off locations. Eligibility is verified separately, outside this app; no medical
             information is stored here.
           </li>

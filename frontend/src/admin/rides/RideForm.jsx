@@ -57,7 +57,6 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
     const found = {};
     if (!riderName.trim()) found.rider_name = "Enter the rider's name.";
     if (!isCompletePhone(phone)) found.rider_phone = "Enter all 10 digits.";
-    if (!email.trim()) found.rider_email = "Enter the rider's UCSB email.";
     if (!date || !time) found.pickup_time = "Enter a date and time.";
     // Hours are only checked when the time changes (like the server), so a ride
     // booked before the hours changed can still be edited, e.g. reassigned.
@@ -120,9 +119,10 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
             {error("rider_phone")}
           </label>
           <label className="field">
-            <span>UCSB email <Req /></span>
+            <span>
+              UCSB email <span className="optional">optional</span>
+            </span>
             <input
-              aria-required="true"
               type="email"
               value={email}
               onChange={(e) => edit("rider_email", setEmail)(e.target.value)}

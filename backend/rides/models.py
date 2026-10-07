@@ -19,7 +19,7 @@ class Ride(models.Model):
     # Rider (validated by dispatch before entry; riders don't have accounts)
     rider_name = models.CharField(max_length=120)
     rider_phone = models.CharField(max_length=10, help_text="10 digits, e.g. 8055550123")
-    rider_email = models.EmailField()
+    rider_email = models.EmailField(blank=True)  # optional; "" when not given
 
     pickup_time = models.DateTimeField()
 

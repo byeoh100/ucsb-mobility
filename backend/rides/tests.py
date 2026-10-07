@@ -130,6 +130,16 @@ class RideApiTests(TestCase):
         self.assertEqual(r.status_code, 201)
         self.assertIsNone(r.json()["driver_name"])
 
+    def test_rider_email_optional(self):
+        for label, overrides in {"blank": {"rider_email": ""}, "spaces": {"rider_email": "   "}}.items():
+            with self.subTest(label):
+                r = self.create(**overrides)
+                self.assertEqual((r.status_code, r.json()["rider_email"]), (201, ""))
+        payload = self.payload()
+        del payload["rider_email"]
+        r = self.client.post("/api/rides/", payload, content_type="application/json")
+        self.assertEqual((r.status_code, r.json()["rider_email"]), (201, ""))
+
     def test_rejections(self):
         yesterday = timezone.localdate() - timedelta(days=1)
         cases = {

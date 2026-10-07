@@ -102,7 +102,8 @@ class RideSerializer(serializers.ModelSerializer):
 
     def validate_rider_email(self, value):
         email = normalize_email(value)
-        django_to_drf(validate_rider_email, email)
+        if email:  # optional, but if given it must be a UCSB address
+            django_to_drf(validate_rider_email, email)
         return email
 
     def validate_pickup_name(self, value):

@@ -109,7 +109,7 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
               <td className="strong" data-label="Rider">{r.rider_name}</td>
               <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
               <td className="email" data-label="Email">
-                <EmailBreak email={r.rider_email} />
+                {r.rider_email ? <EmailBreak email={r.rider_email} /> : <span className="muted">—</span>}
               </td>
               <td data-label="From">{r.pickup_name}</td>
               <td data-label="To">{r.dropoff_name}</td>
