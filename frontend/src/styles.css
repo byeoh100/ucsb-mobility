@@ -71,11 +71,12 @@ a { color: var(--accent); }
 .button-quiet:hover:not(:disabled) { border-color: var(--accent); }
 .button:disabled, .button-quiet:disabled { opacity: 0.5; cursor: default; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; font-weight: 600; }
-input {
+input, textarea {
   font: inherit; padding: 0.65rem 0.75rem; border: 1px solid var(--border);
   border-radius: var(--radius); background: var(--surface); color: var(--text);
   font-weight: 400;
 }
+textarea { resize: vertical; min-height: 3.2rem; }
 
 /* Admin (desktop) */
 .admin { min-height: 100vh; display: flex; flex-direction: column; }
@@ -244,6 +245,21 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .table thead tr { border-bottom: 2px solid var(--accent); }
 .ride-table th.plain { padding: 0.65rem 0.7rem; } /* headers without a sort button */
 .ride-table tr.is-completed td { color: var(--muted); }
+
+/* Ride notes: a small toggle by the rider's name opens a row underneath. */
+.notes-toggle {
+  margin-left: 0.5rem; padding: 0.05rem 0.5rem; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--accent); font: inherit; font-size: 0.75rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; vertical-align: 0.1em;
+}
+.notes-toggle:hover { border-color: var(--accent); }
+.ride-table tr.notes-open td { border-bottom: 0; }
+.ride-table .notes-row td { padding-top: 0; font-weight: 400; }
+.notes-label {
+  margin-right: 0.6rem; color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+}
+.notes-text, .ride-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ride-card-route dd.ride-notes { font-weight: 400; }
 .swatch-small { width: 0.7rem; height: 0.7rem; margin-right: 0.45rem; }
 .status {
   display: inline-block; font-size: 0.8rem; font-weight: 600;
@@ -284,6 +300,8 @@ select {
   border-radius: var(--radius); background: var(--surface); color: var(--text); flex: 1;
 }
 .driver-select { display: flex; align-items: center; gap: 0.6rem; }
+.time-select { display: flex; align-items: center; gap: 0.35rem; font-weight: 600; }
+.time-select select { min-width: 0; }
 .driver-select .swatch { width: 1.2rem; height: 1.2rem; flex: none; }
 
 /* Archive */
@@ -561,6 +579,10 @@ select {
   }
   .table td.col-actions { width: auto; justify-content: flex-end; padding-top: 0.4rem; }
   .ride-table td.email { overflow-wrap: anywhere; }
+  /* An open notes row joins the card above it. */
+  .ride-table tbody tr.notes-open { margin-bottom: 0; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
+  .ride-table tbody tr.notes-row { border-top: 0; border-radius: 0 0 var(--radius) var(--radius); padding-top: 0.15rem; }
+  .ride-table .notes-row td { display: block; }
   .table td > .cell-value { min-width: 0; overflow-wrap: anywhere; } /* long values wrap inside the card */
 
   .archive-layout { grid-template-columns: 1fr; }

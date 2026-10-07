@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
     backup_login: false,
     time_zone: "America/Los_Angeles",
     archive_hour: 8,
-    archive_retention_days: 30,
+    archive_retention_days: 90,
     service_hours: { start: "07:00", end: "19:00" },
     dispatch_phone: "",
     privacy_contact_email: "",

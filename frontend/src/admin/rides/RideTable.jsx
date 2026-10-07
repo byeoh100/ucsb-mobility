@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { formatPhone } from "../../lib/phone.js";
 import { formatTime } from "../../lib/time.js";
 
@@ -59,6 +59,15 @@ export function sortRides(rides, { key, dir }, readOnly = false) {
 export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readOnly = false }) {
   const columns = columnsFor(readOnly);
   const sorted = sortRides(rides, sort, readOnly);
+  const columnCount = columns.length + (readOnly ? 0 : 2);
+  // Rides whose notes are open (a small dropdown under the row).
+  const [openNotes, setOpenNotes] = useState(() => new Set());
+  const toggleNotes = (id) =>
+    setOpenNotes((open) => {
+      const next = new Set(open);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   function clickHeader(key) {
     onSort(sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
@@ -94,61 +103,88 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
           </tr>
         </thead>
         <tbody>
-          {sorted.map((r) => (
-            <tr
-              key={r.id}
-              // Dim finished rides on the live list; in the archive they're all finished.
-              className={!readOnly && r.status === "completed" ? "is-completed" : undefined}
-              style={
-                r.driver_color
-                  ? { boxShadow: `inset 4px 0 0 ${r.driver_color}`, background: `${r.driver_color}12` }
-                  : undefined
-              }
-            >
-              <td className="nowrap strong" data-label="Time">{formatTime(r.pickup_time, timeZone)}</td>
-              <td className="strong" data-label="Rider">{r.rider_name}</td>
-              <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
-              <td className="email" data-label="Email">
-                {r.rider_email ? <EmailBreak email={r.rider_email} /> : <span className="muted">—</span>}
-              </td>
-              <td data-label="From">{r.pickup_name}</td>
-              <td data-label="To">{r.dropoff_name}</td>
-              <td data-label="Driver">
-                {r.driver_name ? (
-                  <>
-                    <span className="swatch swatch-small" style={{ background: r.driver_color }} aria-hidden="true" />
-                    {r.driver_name}
-                  </>
-                ) : (
-                  <span className="muted">Unassigned</span>
+          {sorted.map((r) => {
+            const rowStyle = r.driver_color
+              ? { boxShadow: `inset 4px 0 0 ${r.driver_color}`, background: `${r.driver_color}12` }
+              : undefined;
+            const notesOpen = openNotes.has(r.id);
+            return (
+              <Fragment key={r.id}>
+                <tr
+                  // Dim finished rides on the live list; in the archive they're all finished.
+                  className={
+                    [!readOnly && r.status === "completed" && "is-completed", notesOpen && "notes-open"]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  style={rowStyle}
+                >
+                  <td className="nowrap strong" data-label="Time">{formatTime(r.pickup_time, timeZone)}</td>
+                  <td className="strong" data-label="Rider">
+                    {r.rider_name}
+                    {r.notes && (
+                      <button
+                        className="notes-toggle"
+                        onClick={() => toggleNotes(r.id)}
+                        aria-expanded={notesOpen}
+                        aria-controls={`notes-${r.id}`}
+                      >
+                        Notes <span aria-hidden="true">{notesOpen ? "▴" : "▾"}</span>
+                      </button>
+                    )}
+                  </td>
+                  <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
+                  <td className="email" data-label="Email">
+                    {r.rider_email ? <EmailBreak email={r.rider_email} /> : <span className="muted">—</span>}
+                  </td>
+                  <td data-label="From">{r.pickup_name}</td>
+                  <td data-label="To">{r.dropoff_name}</td>
+                  <td data-label="Driver">
+                    {r.driver_name ? (
+                      <>
+                        <span className="swatch swatch-small" style={{ background: r.driver_color }} aria-hidden="true" />
+                        {r.driver_name}
+                      </>
+                    ) : (
+                      <span className="muted">Unassigned</span>
+                    )}
+                  </td>
+                  <td className="nowrap" data-label={readOnly ? "Started" : "Status"}>
+                    {readOnly ? (
+                      r.started_at ? formatTime(r.started_at, timeZone) : <span className="muted">Never started</span>
+                    ) : (
+                      <span className={`status status-${r.status}`}>{STATUS_LABELS[r.status] ?? r.status}</span>
+                    )}
+                    {r.rider_confirmed && (
+                      <span className="rider-confirmed" title="Rider confirmed" aria-label="Rider confirmed" role="img">
+                        👍
+                      </span>
+                    )}
+                  </td>
+                  {!readOnly && (
+                    <td className="nowrap" data-label="Link">
+                      <RideLinkCell token={r.link_token} />
+                    </td>
+                  )}
+                  {!readOnly && (
+                    <td className="col-actions">
+                      <button className="button-quiet button-small" onClick={() => onEdit(r)} aria-label={`Edit ride for ${r.rider_name}`}>
+                        Edit
+                      </button>
+                    </td>
+                  )}
+                </tr>
+                {r.notes && notesOpen && (
+                  <tr className="notes-row" id={`notes-${r.id}`} style={rowStyle}>
+                    <td colSpan={columnCount}>
+                      <span className="notes-label">Notes</span>
+                      <span className="notes-text">{r.notes}</span>
+                    </td>
+                  </tr>
                 )}
-              </td>
-              <td className="nowrap" data-label={readOnly ? "Started" : "Status"}>
-                {readOnly ? (
-                  r.started_at ? formatTime(r.started_at, timeZone) : <span className="muted">Never started</span>
-                ) : (
-                  <span className={`status status-${r.status}`}>{STATUS_LABELS[r.status] ?? r.status}</span>
-                )}
-                {r.rider_confirmed && (
-                  <span className="rider-confirmed" title="Rider confirmed" aria-label="Rider confirmed" role="img">
-                    👍
-                  </span>
-                )}
-              </td>
-              {!readOnly && (
-                <td className="nowrap" data-label="Link">
-                  <RideLinkCell token={r.link_token} />
-                </td>
-              )}
-              {!readOnly && (
-                <td className="col-actions">
-                  <button className="button-quiet button-small" onClick={() => onEdit(r)} aria-label={`Edit ride for ${r.rider_name}`}>
-                    Edit
-                  </button>
-                </td>
-              )}
-            </tr>
-          ))}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -62,6 +62,13 @@ export default function RideCard({ ride, mine, canStart, canReopen, timeZone, on
         <dd>{ride.pickup_name}</dd>
         <dt className="legend legend-dropoff">Drop off</dt>
         <dd>{ride.dropoff_name}</dd>
+        {/* Notes come only with your own rides (the server leaves them out otherwise). */}
+        {ride.notes && (
+          <>
+            <dt>Notes</dt>
+            <dd className="ride-notes">{ride.notes}</dd>
+          </>
+        )}
         {!mine && (
           <>
             <dt>Driver</dt>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ridesApi } from "../../api.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
+import TimeSelect from "../../components/TimeSelect.jsx";
 import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -38,6 +39,7 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
   const [time, setTime] = useState(original?.time ?? "");
   const [pickup, setPickup] = useState(ride?.pickup_name ?? "");
   const [dropoff, setDropoff] = useState(ride?.dropoff_name ?? "");
+  const [notes, setNotes] = useState(ride?.notes ?? "");
   const [driverId, setDriverId] = useState(ride?.driver ?? "");
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -79,6 +81,7 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
       rider_email: email.trim(),
       pickup_name: pickup.trim(),
       dropoff_name: dropoff.trim(),
+      notes: notes.trim(),
       driver: driverId === "" ? null : Number(driverId),
     };
     // Sent without a time zone: the server reads it as campus time.
@@ -143,18 +146,17 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
             <span>Date <Req /></span>
             <input aria-required="true" type="date" value={date} min={isEdit ? undefined : today} onChange={(e) => edit("pickup_time", setDate)(e.target.value)} />
           </label>
-          <label className="field">
-            <span>Pickup time <Req /></span>
-            <input
-              aria-required="true"
-              type="time"
+          {/* A div, not a label: the time is two dropdowns (see TimeSelect). */}
+          <div className="field">
+            <span aria-hidden="true">Pickup time <Req /></span>
+            <TimeSelect
+              label="Pickup time"
               value={time}
-              min={EARLIEST}
-              max={LATEST}
-              step={300}
-              onChange={(e) => edit("pickup_time", setTime)(e.target.value)}
+              earliest={EARLIEST}
+              latest={LATEST}
+              onChange={edit("pickup_time", setTime)}
             />
-          </label>
+          </div>
         </div>
         {error("pickup_time")}
         <div className="form-row">
@@ -169,6 +171,19 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
             {error("dropoff_name")}
           </label>
         </div>
+        <label className="field">
+          <span>
+            Notes <span className="optional">optional</span>
+          </span>
+          <textarea
+            value={notes}
+            onChange={(e) => edit("notes", setNotes)(e.target.value)}
+            rows={2}
+            maxLength={1000}
+            placeholder="From the rider, e.g. meet at the side door"
+          />
+          {error("notes")}
+        </label>
         <label className="field">
           Driver
           <span className="driver-select">

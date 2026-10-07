@@ -5,7 +5,7 @@ import { formatPhone } from "../lib/phone.js";
 // Public privacy policy (/privacy), linked from Google's consent screen.
 // Written to match what the app actually does; if the app changes, update
 // this page too. Have the program (and UCSB, if required) review the wording.
-const LAST_UPDATED = "October 4, 2026";
+const LAST_UPDATED = "October 7, 2026";
 
 export default function Privacy() {
   const { config } = useAuth();
@@ -36,8 +36,11 @@ export default function Privacy() {
           </li>
           <li>
             <strong>Ride information.</strong> Dispatch enters each rider's name, phone number, UCSB email (optional), pickup
-            time, and pickup and drop-off locations. Eligibility is verified separately, outside this app; no medical
-            information is stored here.
+            time, and pickup and drop-off locations. Eligibility is verified separately, outside this app.
+          </li>
+          <li>
+            <strong>Ride notes (optional).</strong> Anything the rider adds when requesting a ride, such as where to
+            meet or what help they need getting into the cart. Please include only what the driver needs to know.
           </li>
           <li>
             <strong>Map pins (optional).</strong> Riders may mark their pickup and drop-off spots on the campus map.
@@ -70,13 +73,14 @@ export default function Privacy() {
           </li>
           <li>
             <strong>Drivers</strong> can see every ride's time, rider name, phone number, locations, and map pins, so
-            they can coordinate. They can only see the progress of their own rides.
+            they can coordinate. They can only see the progress and notes of their own rides.
           </li>
           <li>
-            <strong>Anyone with a ride's link</strong> can see that ride's time, locations, and map pins. From 15
-            minutes before to 15 minutes after pickup, the link also shows the ride's status, the driver's first name,
-            and the driver's position on the campus map. Links don't show the rider's name, phone number, or email,
-            and they stop working 15 minutes after pickup. Please don't share your link.
+            <strong>Anyone with a ride's link</strong> can see that ride's time, locations, and map pins. From 20
+            minutes before pickup until the ride is over, the link also shows the ride's status, the driver's first
+            name, and the driver's position on the campus map. Links don't show the rider's name, phone number, or
+            email, and they stop working once the ride is over and it's 20 minutes past pickup (at most an hour after
+            pickup). Please don't share your link.
           </li>
           <li>
             <strong>Phone number lookup.</strong> Entering a phone number on the home page shows the times and

@@ -50,7 +50,7 @@ export default function RideLink() {
   if (error === "invalid") body = <Message title="This ride link isn't valid">It may have been mistyped, or the ride was removed.</Message>;
   else if (!data && error) body = <p className="error">{error}</p>;
   else if (!data) body = <p className="muted">Loading your ride…</p>;
-  else if (phase === "expired") body = <Message title="This ride link has expired">Links stop working 15 minutes after the pickup time.</Message>;
+  else if (phase === "expired") body = <Message title="This ride link has expired">Links stop working once the ride is over and it's 20 minutes past the pickup time.</Message>;
   else if (phase === "complete") body = <Message title="Your ride is complete" tone="done">Thanks for riding! You can close this page.</Message>;
   else body = <ActiveRide data={data} token={token} timeZone={timeZone} onUpdate={setData} />;
 
@@ -93,7 +93,7 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
       {live ? (
         <LiveStatus live={live} ride={ride} token={token} onUpdate={onUpdate} />
       ) : (
-        <p className="notice">Live updates start at {formatTime(ride.tracking_starts_at, timeZone)}, 15 minutes before pickup.</p>
+        <p className="notice">Live updates start at {formatTime(ride.tracking_starts_at, timeZone)}, 20 minutes before pickup.</p>
       )}
 
       <section className="stack">

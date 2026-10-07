@@ -51,7 +51,7 @@ export default function DriversPage() {
           className="button"
           onClick={() => setEditing({ driver: null })}
           disabled={!drivers || allColorsTaken}
-          title={allColorsTaken ? "All 12 colors are in use" : undefined}
+          title={allColorsTaken ? `All ${colors.length} colors are in use` : undefined}
         >
           + Add driver
         </button>

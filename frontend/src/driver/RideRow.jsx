@@ -22,6 +22,7 @@ export default function RideRow({ ride, expanded, onToggle, showDriver, ...cardP
             )}
             {ride.rider_name}
             {ride.rider_confirmed && <span aria-label="Rider confirmed" role="img"> 👍</span>}
+            {ride.notes && <span className="has-notes" title="Has notes" aria-label="Has notes" role="img"> 📝</span>}
           </span>
           <span className="ride-row-route">
             {ride.pickup_name} → {ride.dropoff_name}

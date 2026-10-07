@@ -79,7 +79,7 @@ export default function Home() {
         <section className="how-it-works">
           <h2 className="section-title">On your ride page</h2>
           <ul>
-            <li>See when your driver is on the way, starting 15 minutes before pickup</li>
+            <li>See when your driver is on the way, starting 20 minutes before pickup</li>
             <li>Follow your driver on the campus map</li>
             <li>Mark exactly where you'll be waiting (optional)</li>
           </ul>

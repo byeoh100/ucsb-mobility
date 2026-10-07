@@ -1,6 +1,6 @@
 import { Req } from "../../components/Required.jsx";
 
-// Pick one of the 12 preset driver colors. Colors another driver already uses
+// Pick one of the preset driver colors (12, plus a light version of each). Colors another driver already uses
 // are grayed out and can't be chosen; hovering shows who has them.
 //
 // Props:
@@ -46,7 +46,7 @@ export default function ColorPicker({ colors, takenBy, value, onChange, error, r
       </div>
       <p className="hint">
         {allTaken
-          ? "All 12 colors are in use. Remove a driver or change their color to free one up."
+          ? `All ${colors.length} colors are in use. Remove a driver or change their color to free one up.`
           : selected
             ? selected.label
             : "Choose a color"}
