@@ -107,7 +107,9 @@ class LocationSharingTests(TestCase):
         self.assertNotIn("lat", loc)  # raw GPS never leaves the server
         with at(D, 9, 52):
             self.assertFalse(self.client.get("/api/drivers/").json()[0]["location"]["live"])
-        with at(D, 10, 20):  # ride completed: no current ride, no location shown
+        with at(D, 10, 30):  # late pickup: still on the way, still shown
+            self.assertEqual(self.client.get("/api/drivers/").json()[0]["current_ride"]["rider_name"], "Riley")
+        with at(D, 11, 0):  # 60 min cutoff: completed, no current ride, no location shown
             driver = self.client.get("/api/drivers/").json()[0]
         self.assertEqual((driver["current_ride"], driver["location"]), (None, None))
 

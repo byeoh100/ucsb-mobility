@@ -8,6 +8,7 @@ from common import service_hours
 from common.phone import normalize_phone
 
 from .models import Ride
+from .recurrence import MAX_SPAN_DAYS, repeat_dates
 
 
 
@@ -21,6 +22,13 @@ def django_to_drf(func, value):
 def pin(x, y):
     """{"x": 0.42, "y": 0.61}, or None if the rider hasn't placed it."""
     return {"x": x, "y": y} if x is not None and y is not None else None
+
+
+class RepeatSerializer(serializers.Serializer):
+    """{"days": [0, 2], "until": "2026-12-04"}: Mondays and Wednesdays until Dec 4."""
+
+    days = serializers.ListField(child=serializers.IntegerField(min_value=0, max_value=6), allow_empty=False)
+    until = serializers.DateField()
 
 
 class RideSerializer(serializers.ModelSerializer):
@@ -40,6 +48,9 @@ class RideSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     rider_confirmed = serializers.SerializerMethodField()
 
+    # Only when adding: repeat this ride on these weekdays until a date.
+    repeat = RepeatSerializer(write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = Ride
         fields = [
@@ -50,6 +61,7 @@ class RideSerializer(serializers.ModelSerializer):
             "pickup_time",
             "pickup_name",
             "dropoff_name",
+            "notes",
             "pickup_pin",
             "dropoff_pin",
             "driver",
@@ -60,11 +72,14 @@ class RideSerializer(serializers.ModelSerializer):
             "started_at",
             "completed_at",
             "link_token",
+            "series",
+            "repeat",
         ]
-        read_only_fields = ["link_token", "started_at", "completed_at"]
+        read_only_fields = ["link_token", "started_at", "completed_at", "series"]
 
-    # Ride progress is private: only dispatch and the ride's own driver see it.
-    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at", "completed_at")
+    # Ride progress and notes are private: only dispatch and the ride's own
+    # driver see them. (Notes may say what help the rider needs.)
+    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at", "completed_at", "notes")
 
     def to_representation(self, ride):
         data = super().to_representation(ride)
@@ -106,6 +121,9 @@ class RideSerializer(serializers.ModelSerializer):
             django_to_drf(validate_rider_email, email)
         return email
 
+    def validate_notes(self, value):
+        return value.strip()  # optional
+
     def validate_pickup_name(self, value):
         return self._place_name(value, "pickup")
 
@@ -117,6 +135,24 @@ class RideSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError(f"Enter the {which} location name.")
         return value
+
+    def validate(self, attrs):
+        repeat = attrs.get("repeat")
+        if repeat is not None:
+            if self.instance is not None:
+                raise serializers.ValidationError({"repeat": "Repeat can only be set when adding a ride."})
+            if "pickup_time" not in attrs:
+                raise serializers.ValidationError({"pickup_time": "Enter a date and time."})
+            start = timezone.localtime(attrs["pickup_time"]).date()
+            until = repeat["until"]
+            if until < start:
+                raise serializers.ValidationError({"repeat": "The last day can't be before the first ride."})
+            if (until - start).days > MAX_SPAN_DAYS:
+                raise serializers.ValidationError({"repeat": f"Repeat for at most {MAX_SPAN_DAYS} days."})
+            repeat["dates"] = repeat_dates(start, set(repeat["days"]), until)
+            if not repeat["dates"]:
+                raise serializers.ValidationError({"repeat": "None of the chosen days fall in that range."})
+        return attrs
 
     def validate_pickup_time(self, value):
         local = timezone.localtime(value)

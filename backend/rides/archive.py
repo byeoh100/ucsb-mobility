@@ -4,7 +4,7 @@ Like ride status, this is worked out from the clock rather than by a job:
 
   - A ride is archived once its day is over AND it's past 8:00 AM the next
     morning. (Before 8 AM, yesterday's rides are still on the main list.)
-  - Archived rides are kept for ARCHIVE_RETENTION_DAYS (default 30), then
+  - Archived rides are kept for ARCHIVE_RETENTION_DAYS (default 90), then
     deleted by purge_expired(), which the API calls as pages load.
   - Drivers' last GPS fix is deleted after a day by the same cleanup.
 """

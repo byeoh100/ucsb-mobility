@@ -63,8 +63,9 @@ export const driversApi = {
 export const ridesApi = {
   list: (date) => request(`/rides/?date=${encodeURIComponent(date)}`),
   create: (ride) => request("/rides/", { method: "POST", body: ride }),
-  update: (id, changes) => request(`/rides/${id}/`, { method: "PATCH", body: changes }),
-  remove: (id) => request(`/rides/${id}/`, { method: "DELETE" }),
+  // scope "following": also this ride's later rides in its repeating series.
+  update: (id, changes, scope) => request(`/rides/${id}/${scope ? `?scope=${scope}` : ""}`, { method: "PATCH", body: changes }),
+  remove: (id, scope) => request(`/rides/${id}/${scope ? `?scope=${scope}` : ""}`, { method: "DELETE" }),
   start: (id) => request(`/rides/${id}/start/`, { method: "POST" }),
   unstart: (id) => request(`/rides/${id}/unstart/`, { method: "POST" }),
   complete: (id) => request(`/rides/${id}/complete/`, { method: "POST" }),

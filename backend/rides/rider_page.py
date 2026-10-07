@@ -2,11 +2,13 @@
 
 Phases, by the clock and the ride's status:
 
-    upcoming   more than 15 min before pickup: details, pin dragging
-    live       15 min before pickup → 15 min after: status, drop-offs away,
+    upcoming   more than 20 min before pickup: details, pin dragging
+    live       from 20 min before pickup until the ride is over (a late
+               pickup stays live, up to RIDE_CUTOFF): status, drop-offs away,
                driver's position, thumbs up
-    complete   driver has started their next ride: "your ride is complete"
-    expired    15 min after pickup: nothing but "this link has expired"
+    complete   the ride is over: "your ride is complete"
+    expired    the ride is over and it's 20+ min past pickup: nothing but
+               "this link has expired"
 """
 
 from django.conf import settings
@@ -30,11 +32,11 @@ def ride_status(ride, now):
 
 def phase_of(ride, now, status=None):
     status = status or ride_status(ride, now)
-    if now >= ride.pickup_time + LINK_WINDOW:
-        return EXPIRED
     if status == COMPLETED:
-        return COMPLETE
-    if now >= ride.pickup_time - LINK_WINDOW:
+        return EXPIRED if now >= ride.pickup_time + LINK_WINDOW else COMPLETE
+    # Not over yet: live from 20 min before pickup for as long as the ride
+    # runs, however late. (Also live if the driver set off extra early.)
+    if now >= ride.pickup_time - LINK_WINDOW or status == ON_THE_WAY:
         return LIVE
     return UPCOMING
 

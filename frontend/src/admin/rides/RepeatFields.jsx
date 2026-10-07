@@ -1,0 +1,91 @@
+import { shiftDate } from "../../lib/time.js";
+
+// "Repeat" options for a new ride: which weekdays, and until when. The server
+// makes one ride per matching day (rides/recurrence.py), each with its own link.
+//
+// Props:
+//   start     "YYYY-MM-DD", the first ride's date
+//   days      [0..6], Monday = 0 (the server's numbering)
+//   until     "YYYY-MM-DD" or ""
+//   onChange  ({ days, until }) => void
+//   error     message to show, if any
+
+export const MAX_SPAN_DAYS = 120; // keep in step with rides/recurrence.py
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+// Monday = 0 ... Sunday = 6
+export function weekdayOf(isoDate) {
+  return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+// Every date from start to until (inclusive) on one of the chosen weekdays.
+export function repeatDates(start, days, until) {
+  const dates = [];
+  if (!start || !until || until < start) return dates;
+  for (let d = start; d <= until && dates.length <= 366; d = shiftDate(d, 1)) {
+    if (days.includes(weekdayOf(d))) dates.push(d);
+  }
+  return dates;
+}
+
+// What's wrong with these choices, or "" if nothing.
+export function repeatProblem(start, days, until) {
+  if (days.length === 0) return "Pick at least one day.";
+  if (!until) return "Choose the last day.";
+  if (until < start) return "The last day can't be before the first ride.";
+  if (until > shiftDate(start, MAX_SPAN_DAYS)) return `Repeat for at most ${MAX_SPAN_DAYS} days.`;
+  if (repeatDates(start, days, until).length === 0) return "None of the chosen days fall in that range.";
+  return "";
+}
+
+const shortDate = (iso) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
+
+export default function RepeatFields({ start, days, until, onChange, error }) {
+  const dates = repeatDates(start, days, until);
+  const toggle = (day) =>
+    onChange({ days: days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort(), until });
+
+  return (
+    <div className="repeat-fields stack">
+      <div className="field">
+        <span id="repeat-days-label">On</span>
+        <div className="weekday-picker" role="group" aria-labelledby="repeat-days-label">
+          {WEEKDAYS.map((label, day) => (
+            <button
+              key={day}
+              type="button"
+              className="weekday"
+              aria-pressed={days.includes(day)}
+              aria-label={WEEKDAY_NAMES[day]}
+              onClick={() => toggle(day)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="field repeat-until">
+        <span>Until</span>
+        <input
+          type="date"
+          value={until}
+          min={start}
+          max={shiftDate(start, MAX_SPAN_DAYS)}
+          onChange={(e) => onChange({ days, until: e.target.value })}
+        />
+      </label>
+      {error ? (
+        <span className="field-error">{error}</span>
+      ) : (
+        dates.length > 0 && (
+          <p className="hint" aria-live="polite">
+            Adds {dates.length} {dates.length === 1 ? "ride" : "rides"}, {shortDate(dates[0])} to{" "}
+            {shortDate(dates[dates.length - 1])}. Holidays aren't skipped: delete those rides on their day.
+          </p>
+        )
+      )}
+    </div>
+  );
+}

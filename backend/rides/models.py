@@ -23,6 +23,10 @@ class Ride(models.Model):
 
     pickup_time = models.DateTimeField()
 
+    # Anything the rider added when requesting the ride ("meet at the side
+    # door"). Shown to dispatch and the ride's own driver only.
+    notes = models.TextField(max_length=1000, blank=True)
+
     # Places, as names students recognize (entered by dispatch).
     pickup_name = models.CharField(max_length=120)
     dropoff_name = models.CharField(max_length=120)
@@ -49,6 +53,9 @@ class Ride(models.Model):
     rider_confirmed_at = models.DateTimeField(null=True, blank=True)
 
     link_token = models.CharField(max_length=32, unique=True, default=new_link_token, editable=False)
+
+    # Rides created together by "Repeat" share this id (see rides/recurrence.py).
+    series = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

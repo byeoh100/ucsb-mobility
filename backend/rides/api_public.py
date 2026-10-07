@@ -12,7 +12,7 @@ from common.phone import normalize_phone
 
 from .models import Ride
 from .rider_page import COMPLETE, EXPIRED, LIVE, UPCOMING, page_payload, phase_of, ride_status
-from .status import LINK_WINDOW, ON_THE_WAY
+from .status import ON_THE_WAY, RIDE_CUTOFF
 
 
 class Public(APIView):
@@ -116,7 +116,9 @@ class RideLookupView(Public):
         except Exception:
             return Response({"error": "Enter a 10-digit phone number."}, status=status.HTTP_400_BAD_REQUEST)
         now = timezone.now()
-        rides = Ride.objects.filter(rider_phone=phone, pickup_time__gt=now - LINK_WINDOW).order_by("pickup_time")[:10]
+        # RIDE_CUTOFF so a late ride still under way is found; phase_of below
+        # drops the ones that are over.
+        rides = Ride.objects.filter(rider_phone=phone, pickup_time__gt=now - RIDE_CUTOFF).order_by("pickup_time")[:10]
         return Response([
             {
                 "pickup_time": timezone.localtime(r.pickup_time).isoformat(),

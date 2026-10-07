@@ -207,24 +207,25 @@ Before real shifts depend on it, check Render's current pricing. Free web instan
 | `SERVICE_START`, `SERVICE_END` | optional | hours of operation, 24-hour `HH:MM` (default `07:00` to `19:00`); rides can only be scheduled in this window |
 | `DISPATCH_PHONE` | recommended | dispatch's number, shown on rider pages and the privacy policy |
 | `PRIVACY_CONTACT_EMAIL` | recommended | contact for privacy questions, shown on `/privacy` |
-| `ARCHIVE_RETENTION_DAYS` | optional | days archived rides are kept (default 30) |
+| `ARCHIVE_RETENTION_DAYS` | optional | days archived rides are kept (default 90, about a quarter) |
 | `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS` | custom domains | see above |
 
 ## For later parts
 
 - API views use `accounts.permissions.IsAdmin` or `IsDriverOrAdmin`.
 - Phone numbers are stored as 10 digits (`common/phone.py`). `frontend/src/lib/phone.js` formats them as (805) - 555 - 0123, and `components/PhoneInput.jsx` is the typing-as-you-go input; reuse it for rider phones.
-- Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped the optional **Mark complete** (which can be undone with Reopen), 15 min after pickup, or once the same driver starts a later ride; *on the way* once `started_at` is set; otherwise *not confirmed*.
+- Ride status is computed, never stored (`rides/status.py`): *completed* if the driver tapped the optional **Mark complete** (which can be undone with Reopen), once the same driver starts a later ride, or 60 min after pickup (`RIDE_CUTOFF`, a safety net for rides nobody closed; until then a late driver can still start the ride); *on the way* once `started_at` is set; otherwise *not confirmed*.
 - Archiving is computed too (`rides/archive.py`): a day's rides leave the Rides page and become read-only at 8:00 AM the next morning. Rides older than `ARCHIVE_RETENTION_DAYS` are deleted by `purge_expired()`, which runs as the rides and archive pages load, so no scheduled job is needed. `seed_demo --date <past date>` fills the archive for testing.
 - Map pins are optional and set by the rider on their ride page (later part). They're stored as fractions of the campus map image (`frontend/src/assets/campus-map.jpg`), not GPS, so dispatch's API only reads them.
 - Hours of operation (default 7:00 AM to 7:00 PM) are one setting, `SERVICE_START`/`SERVICE_END`, enforced by the server and shown by the ride form (`common/service_hours.py`).
 - Ride times display in the campus time zone (`TIME_ZONE`, sent to the frontend in the session) regardless of the viewer's device.
 - Ride progress is private: the API sends `status`, `rider_confirmed` and `started_at` only to dispatch and the ride's assigned driver (`RideSerializer.to_representation`). Other drivers get those fields as `null`, but still see who/when/where so they can arrange swaps.
-- Rider page phases (`rides/rider_page.py`): more than 15 min before pickup it shows details and lets riders place pins; from 15 min before to 15 min after it's live (status, drop-offs away, driver's position, 👍 once the driver is on the way); once the driver starts their next ride it says the ride is complete; after the window the link shows nothing but "expired".
+- Rider page phases (`rides/rider_page.py`): more than 20 min before pickup it shows details and lets riders place pins; from 20 min before pickup until the ride is over it's live (status, drop-offs away, driver's position, 👍 once the driver is on the way), so a late pickup stays live; once the ride is over it says the ride is complete, and from 20 min after pickup the link shows nothing but "expired".
+- Repeating rides (`rides/recurrence.py`): adding a ride with `"repeat": {"days": [0, 2], "until": "YYYY-MM-DD"}` (Monday = 0) creates one ride per matching day, up to 120 days, sharing a `series` id. Each is a normal ride with its own link. `PATCH`/`DELETE` with `?scope=following` also applies to the series' later rides (edits keep each ride's date and skip rides already started).
 - The privacy policy (`frontend/src/pages/Privacy.jsx`) describes what the app actually does. If you change what's collected, who sees it, or how long it's kept, update it. The program (and UCSB, if required) should review the wording.
 - Location privacy: phones send GPS only while their driver has a ride on the way; the server keeps just the latest fix per driver, deletes it after a day, and only shows it during that ride, and only ever as a position on the map image (raw GPS never leaves the server). The phone's screen is kept awake while sharing, since browsers pause GPS when it locks.
 - `components/CampusMap.jsx` draws the campus image with the rider's pins (tips anchored exactly on the stored point); the rider page will reuse it.
 - Styling follows UCSB's brand guidelines (brand.ucsb.edu): the digital color palette is defined once at the top of `frontend/src/styles.css` (use those variables, not new hex values), and the font is Nunito Sans, UCSB's approved web substitute for Avenir, served by the app itself (`@fontsource/nunito-sans`). The app uses UCSB colors and type but not UCSB logos or marks, which require approval from UCSB's brand office.
 - `components/Modal.jsx` is the shared dialog for forms; `components/ConfirmDialog.jsx` wraps it for destructive actions (use it for ride deletion).
-- Driver colors are the 12 presets in `accounts/models.py` (`DRIVER_COLORS`).
+- Driver colors are the 24 presets in `accounts/models.py` (`DRIVER_COLORS`): 12 colors plus a light version of each.
 - New admin pages go in `frontend/src/admin/` and get a route under `/admin` in `App.jsx`.

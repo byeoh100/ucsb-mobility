@@ -56,8 +56,16 @@ class RiderPageTests(TestCase):
         self.assertEqual(p["live"]["status"], "not_confirmed")
         self.assertEqual(p["live"]["driver"], {"name": "Dana", "color": "#1a73e8"})
 
+    def test_late_pickup_stays_live(self):
+        with at(10, 30):  # driver hasn't started yet: still live, so the rider can see that
+            self.assertEqual((self.page()["phase"], self.page()["live"]["status"]), ("live", "not_confirmed"))
+        self.ride.started_at = local(D, 10, 35)
+        self.ride.save()
+        with at(10, 50):
+            self.assertEqual((self.page()["phase"], self.page()["live"]["status"]), ("live", "on_the_way"))
+
     def test_expired_reveals_nothing(self):
-        with at(10, 15):
+        with at(11, 0):
             p = self.page()
         self.assertEqual(p, {"phase": "expired", "dispatch_phone": "8055550100"})
 
@@ -69,7 +77,7 @@ class RiderPageTests(TestCase):
         nxt.save()
         with at(10, 6):
             self.assertEqual(self.page()["phase"], "complete")
-        with at(10, 16):
+        with at(10, 20):
             self.assertEqual(self.page()["phase"], "expired")
 
     def test_dropoffs_away(self):
@@ -124,7 +132,7 @@ class RiderPageTests(TestCase):
             self.assertEqual(self.page()["ride"]["pickup_pin"], {"x": 0.5, "y": 0.25})  # untouched
             self.assertEqual(put({"pickup": {"x": 1.5, "y": 0.2}}).status_code, 400)
             self.assertEqual(put({"pickup": {"x": "a"}}).status_code, 400)
-        with at(10, 20):
+        with at(11, 0):
             self.assertEqual(put({"pickup": None}).status_code, 400)  # expired
         self.ride.refresh_from_db()
         self.assertEqual((self.ride.pickup_x, self.ride.dropoff_x), (0.5, None))
@@ -156,8 +164,12 @@ class LookupTests(TestCase):
         self.assertEqual(set(rides[0]), {"pickup_time", "pickup_name", "dropoff_name", "link_token"})
 
     def test_skips_expired(self):
-        with at(10, 20):
+        with at(11, 0):
             self.assertEqual(len(self.lookup("8055551234").json()), 1)
+
+    def test_finds_late_ride_still_under_way(self):
+        with at(10, 30):
+            self.assertEqual(len(self.lookup("8055551234").json()), 2)
 
     def test_bad_number(self):
         self.assertEqual(self.lookup("555").status_code, 400)

@@ -34,10 +34,12 @@ class StatusTests(TestCase):
         now = local(self.day, 12, 0)
         waiting = self.ride(12, 10)
         early_started = self.ride(11, 50, started=local(self.day, 11, 40))
-        expired = self.ride(11, 40)  # 20 min ago, never started
-        s = statuses_for([waiting, early_started, expired], now)
+        late = self.ride(11, 30)  # 30 min ago, driver hasn't started it yet
+        expired = self.ride(11, 0)  # 60 min ago, never started
+        s = statuses_for([waiting, early_started, late, expired], now)
         self.assertEqual(s[waiting.id], NOT_CONFIRMED)
         self.assertEqual(s[early_started.id], ON_THE_WAY)
+        self.assertEqual(s[late.id], NOT_CONFIRMED)  # a late driver can still start it
         self.assertEqual(s[expired.id], COMPLETED)
 
     def test_starting_a_later_ride_completes_the_earlier_one(self):
@@ -47,8 +49,14 @@ class StatusTests(TestCase):
         s = statuses_for([first, second], now)
         self.assertEqual((s[first.id], s[second.id]), (COMPLETED, ON_THE_WAY))
 
-    def test_exactly_15_minutes_after_is_completed(self):
-        r = self.ride(11, 45, started=local(self.day, 11, 40))
+    def test_late_pickup_stays_on_the_way(self):
+        # Pilot day 1: a pickup well after its time must not close on its own.
+        r = self.ride(11, 20, started=local(self.day, 11, 15))
+        self.assertEqual(statuses_for([r], local(self.day, 12, 0))[r.id], ON_THE_WAY)
+
+    def test_exactly_60_minutes_after_is_completed(self):
+        r = self.ride(11, 0, started=local(self.day, 10, 55))
+        self.assertEqual(statuses_for([r], local(self.day, 11, 59))[r.id], ON_THE_WAY)
         self.assertEqual(statuses_for([r], local(self.day, 12, 0))[r.id], COMPLETED)
 
 
@@ -87,6 +95,16 @@ class RideApiTests(TestCase):
         self.assertEqual(rides[0]["status"], NOT_CONFIRMED)
         self.assertFalse(rides[0]["rider_confirmed"])
         self.assertEqual(self.client.get("/api/rides/").json(), [])  # today: none
+
+    def test_notes_optional_and_trimmed(self):
+        self.assertEqual(self.create().json()["notes"], "")
+        body = self.create(notes="  Meet at the side door\n").json()
+        self.assertEqual(body["notes"], "Meet at the side door")
+        self.assertEqual(self.create(notes="x" * 1001).status_code, 400)
+
+    def test_rider_page_never_shows_notes(self):
+        token = self.create(notes="Uses crutches").json()["link_token"]
+        self.assertNotIn("crutches", self.client.get(f"/api/r/{token}/").content.decode())
 
     def test_local_time_is_kept(self):
         self.create()

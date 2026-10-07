@@ -32,6 +32,7 @@ export default function RidesPage() {
   // null = form closed, { ride: null } = adding, { ride } = editing
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null); // ride pending deletion
+  const [deleteScope, setDeleteScope] = useState(""); // "following" = this and later rides in its series
   const [hideCompleted, setHideCompleted] = useHideCompleted();
 
   // Drivers for the form's dropdown.
@@ -167,6 +168,7 @@ export default function RidesPage() {
             onDelete={(ride) => {
               // Swap the edit dialog for the confirmation.
               setEditing(null);
+              setDeleteScope("");
               setDeleting(ride);
             }}
           />
@@ -176,11 +178,11 @@ export default function RidesPage() {
       <ConfirmDialog
         open={deleting !== null}
         title={deleting ? `Delete ride for ${deleting.rider_name}?` : ""}
-        confirmLabel="Delete ride"
+        confirmLabel={deleteScope === "following" ? "Delete rides" : "Delete ride"}
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
           try {
-            await ridesApi.remove(deleting.id);
+            await ridesApi.remove(deleting.id, deleteScope || undefined);
           } catch (err) {
             // Already gone (e.g. deleted in another tab): that's what we wanted.
             if (err.status !== 404) throw err;
@@ -195,7 +197,27 @@ export default function RidesPage() {
               {deleting.dropoff_name}
               {deleting.driver_name && <> · {deleting.driver_name}</>}
             </p>
-            <p className="muted">The rider's link will stop working. This can't be undone.</p>
+            {deleting.series && (
+              <fieldset className="series-scope">
+                <legend>This ride repeats</legend>
+                <label className="toggle">
+                  <input type="radio" name="delete-scope" checked={deleteScope === ""} onChange={() => setDeleteScope("")} />
+                  Only this ride
+                </label>
+                <label className="toggle">
+                  <input
+                    type="radio"
+                    name="delete-scope"
+                    checked={deleteScope === "following"}
+                    onChange={() => setDeleteScope("following")}
+                  />
+                  This and later rides in the series
+                </label>
+              </fieldset>
+            )}
+            <p className="muted">
+              {deleteScope === "following" ? "Their links" : "The rider's link"} will stop working. This can't be undone.
+            </p>
           </>
         )}
       </ConfirmDialog>

@@ -85,9 +85,15 @@ class DriverActionTests(TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("today", r.json()["error"])
 
+    def test_late_driver_can_still_start(self):
+        ride = self.ride(10)
+        with at(D, 10, 30):  # running late: the ride is still open
+            r = self.start(ride)
+        self.assertEqual((r.status_code, r.json()["status"]), (200, "on_the_way"))
+
     def test_completed_ride_cannot_start(self):
         ride = self.ride(10)
-        with at(D, 10, 20):  # 20 min after pickup: completed
+        with at(D, 11, 0):  # 60 min after pickup: completed
             r = self.start(ride)
         self.assertEqual((r.status_code, r.json()["error"]), (400, "This ride is already completed."))
 
@@ -117,6 +123,7 @@ class StatusPrivacyTests(TestCase):
                 rider_name=f"R{hour}", rider_phone="8055550000", rider_email="r@ucsb.edu",
                 pickup_time=local(D, hour), pickup_name="A", dropoff_name="B", driver=driver,
                 started_at=local(D, 9, 50), rider_confirmed_at=local(D, 9, 51),
+                notes="Uses crutches",
             )
 
         self.mine, self.sams, self.unassigned = ride(self.dana, 10), ride(self.sam, 11), ride(None, 12)
@@ -139,11 +146,20 @@ class StatusPrivacyTests(TestCase):
             self.assertEqual(rides[other]["pickup_name"], "A")
         self.assertEqual(rides[self.sams.id]["driver_name"], "Sam")
 
+    def test_notes_only_for_own_rides(self):
+        # Notes can be about health, so other drivers don't get them.
+        self.client.force_login(self.dana_user)
+        rides = self.listing()
+        self.assertEqual(rides[self.mine.id]["notes"], "Uses crutches")
+        self.assertIsNone(rides[self.sams.id]["notes"])
+        self.assertIsNone(rides[self.unassigned.id]["notes"])
+
     def test_dispatch_sees_everything(self):
         AdminEmail.objects.create(email="boss@ucsb.edu")
         self.client.force_login(User.objects.create(username="boss@ucsb.edu", email="boss@ucsb.edu"))
         rides = self.listing()
         self.assertTrue(all(r["status"] is not None for r in rides.values()))
+        self.assertTrue(all(r["notes"] == "Uses crutches" for r in rides.values()))
 
     def test_single_ride_endpoint_also_hides(self):
         self.client.force_login(self.dana_user)
@@ -183,7 +199,7 @@ class MarkCompleteTests(TestCase):
             sent = self.client.post("/api/location/", {"lat": 34.41, "lng": -119.84}, content_type="application/json")
             self.assertEqual(sent.status_code, 409)  # sharing stops
         self.assertFalse(DriverLocation.objects.exists())
-        with at(D, 10, 16):
+        with at(D, 10, 20):
             self.assertEqual(self.rider_phase(), "expired")  # then expires as usual
 
     def test_only_when_on_the_way(self):
@@ -210,13 +226,13 @@ class MarkCompleteTests(TestCase):
     def test_cannot_reopen_after_window_or_next_ride(self):
         nxt = Ride.objects.create(
             rider_name="N", rider_phone="8055550001", rider_email="n@ucsb.edu",
-            pickup_time=local(D, 10, 30), pickup_name="A", dropoff_name="B", driver=self.dana,
+            pickup_time=local(D, 10, 10), pickup_name="A", dropoff_name="B", driver=self.dana,
         )
         with at(D, 9, 50):
             self.post("start")
             self.post("complete")
         with at(D, 9, 55):
-            self.post("start", nxt)
+            self.assertEqual(self.post("start", nxt).status_code, 200)
             self.assertEqual(self.post("reopen").status_code, 400)  # driver has moved on
         self.ride.refresh_from_db()
         self.assertIsNotNone(self.ride.completed_at)  # failed reopen changed nothing

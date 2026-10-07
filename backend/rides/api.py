@@ -1,5 +1,6 @@
 from datetime import date as date_type
 
+from django.db import transaction
 from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -14,6 +15,7 @@ from accounts.validators import normalize_email
 
 from .archive import archive_cutoff, is_archived, purge_expired
 from .models import Ride
+from .recurrence import SHARED_FIELDS, create_series, same_time_on
 from .serializers import RideSerializer
 from .status import COMPLETED, ON_THE_WAY, statuses_for
 
@@ -81,14 +83,65 @@ class RideViewSet(viewsets.ModelViewSet):
         purge_expired()  # retention cleanup rides along with normal page loads
         return super().list(request, *args, **kwargs)
 
+    def create(self, request, *args, **kwargs):
+        """POST with "repeat": {"days", "until"} adds one ride per matching day
+        (a series). Answers with the first ride plus "series_count"."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        repeat = serializer.validated_data.pop("repeat", None)
+        if repeat is None:
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        rides = create_series(serializer.validated_data, repeat["dates"])
+        data = self.get_serializer(rides[0]).data
+        data["series_count"] = len(rides)
+        return Response(data, status=status.HTTP_201_CREATED)
+
     def update(self, request, *args, **kwargs):
-        if is_archived(self.get_object()):
+        ride = self.get_object()
+        if is_archived(ride):
             return archived_response()
+        if wants_following(request, ride):
+            return self.update_following(request, ride, partial=kwargs.get("partial", False))
         return super().update(request, *args, **kwargs)
 
+    def update_following(self, request, ride, partial):
+        """PATCH ...?scope=following: this ride and the series' later rides.
+
+        Later rides get the same rider, places, notes, driver, and time of day,
+        each keeping its own date. Rides already started or completed are left
+        alone.
+        """
+        serializer = self.get_serializer(ride, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        new_time = data.get("pickup_time")
+        if new_time and timezone.localtime(new_time).date() != timezone.localtime(ride.pickup_time).date():
+            return error("To move a repeating ride to another day, change just that ride.")
+        later = list(
+            Ride.objects.filter(series=ride.series, pickup_time__gt=ride.pickup_time, started_at=None, completed_at=None)
+        )
+        with transaction.atomic():
+            serializer.save()
+            for other in later:
+                for field in SHARED_FIELDS:
+                    if field in data:
+                        setattr(other, field, data[field])
+                if new_time:
+                    other.pickup_time = same_time_on(other, new_time)
+                other.save()
+        data = self.get_serializer(ride).data
+        data["series_count"] = len(later) + 1
+        return Response(data)
+
     def destroy(self, request, *args, **kwargs):
-        if is_archived(self.get_object()):
+        ride = self.get_object()
+        if is_archived(ride):
             return archived_response()
+        if wants_following(request, ride):
+            # This ride and every later ride in its series.
+            Ride.objects.filter(series=ride.series, pickup_time__gte=ride.pickup_time).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return super().destroy(request, *args, **kwargs)
 
     # --- Driver actions -----------------------------------------------------
@@ -192,6 +245,11 @@ def viewer_for(request):
     return {"is_admin": False, "driver_id": driver.id if driver else None}
 
 
+def wants_following(request, ride):
+    """?scope=following on a ride that's part of a series."""
+    return request.query_params.get("scope") == "following" and ride.series is not None
+
+
 def error(message, code=status.HTTP_400_BAD_REQUEST):
     return Response({"error": message}, status=code)
 
@@ -233,7 +291,7 @@ class LocationView(APIView):
 class ArchiveDaysView(APIView):
     """GET /api/archive/days/: which days have archived rides (newest first).
 
-    {"retention_days": 30, "days": [{"date": "2026-10-01", "count": 41}, ...]}
+    {"retention_days": 90, "days": [{"date": "2026-10-01", "count": 41}, ...]}
     """
 
     permission_classes = [IsAdmin]

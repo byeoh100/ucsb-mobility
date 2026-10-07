@@ -173,7 +173,7 @@ def backup_sign_in(request):
 
     if username == "driver" and backup.ensure_driver_profile() is None:
         return JsonResponse(
-            {"error": "All 12 driver colors are in use. Free one up on the Drivers page first."}, status=409
+            {"error": "All driver colors are in use. Free one up on the Drivers page first."}, status=409
         )
 
     cache.delete(failures_key)

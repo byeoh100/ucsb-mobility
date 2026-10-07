@@ -2,8 +2,9 @@
 
     not_confirmed  driver hasn't tapped "On the way" yet
     on_the_way     driver tapped it
-    completed      the driver tapped "Mark complete", OR 15 minutes past pickup
-                   time, OR the same driver has since started another ride
+    completed      the driver tapped "Mark complete", OR the same driver has
+                   since started another ride, OR RIDE_CUTOFF (60 min) past
+                   pickup time, a safety net for rides nobody closed
 
 Computing it on read means rides complete on their own ("lazily"), with no
 scheduled job flipping statuses.
@@ -16,14 +17,21 @@ NOT_CONFIRMED = "not_confirmed"
 ON_THE_WAY = "on_the_way"
 COMPLETED = "completed"
 
-# The rider link is live from 15 min before pickup to 15 min after.
-LINK_WINDOW = timedelta(minutes=15)
+# The rider link goes live 20 min before pickup, and closes 20 min after
+# pickup once the ride is over (see rider_page.py).
+LINK_WINDOW = timedelta(minutes=20)
+
+# A ride that's late or still under way stays open this long after pickup:
+# a late driver can still tap "On the way", and the rider's link stays live.
+# Past this, the ride counts as completed even if nobody closed it, so
+# location sharing can't run on forever.
+RIDE_CUTOFF = timedelta(minutes=60)
 
 
 def status_of(ride, now, driver_started_later):
     if ride.completed_at:
         return COMPLETED
-    if now >= ride.pickup_time + LINK_WINDOW:
+    if now >= ride.pickup_time + RIDE_CUTOFF:
         return COMPLETED
     if ride.started_at:
         return COMPLETED if driver_started_later else ON_THE_WAY

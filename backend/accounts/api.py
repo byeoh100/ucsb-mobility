@@ -16,7 +16,7 @@ class DriverViewSet(viewsets.ModelViewSet):
     POST   /api/drivers/          add
     PATCH  /api/drivers/<id>/     edit
     DELETE /api/drivers/<id>/     remove (their rides become unassigned, once rides exist)
-    GET    /api/drivers/colors/   the 12 preset colors
+    GET    /api/drivers/colors/   the 24 preset colors
     """
 
     queryset = Driver.objects.order_by("name")

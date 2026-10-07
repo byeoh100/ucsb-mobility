@@ -53,7 +53,7 @@ def password_matches(username, password):
 
 def ensure_driver_profile():
     """The backup driver's Driver row (so dispatch can assign rides to it).
-    Created on first sign-in with the first free color; None if all 12 are taken."""
+    Created on first sign-in with the first free color; None if all colors are taken."""
     from .models import DRIVER_COLORS, Driver
 
     email = email_for("driver")

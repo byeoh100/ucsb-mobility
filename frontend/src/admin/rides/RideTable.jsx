@@ -122,6 +122,11 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                   <td className="nowrap strong" data-label="Time">{formatTime(r.pickup_time, timeZone)}</td>
                   <td className="strong" data-label="Rider">
                     {r.rider_name}
+                    {r.series && (
+                      <span className="series-badge" title="Repeating ride" aria-label="Repeating ride" role="img">
+                        ↻
+                      </span>
+                    )}
                     {r.notes && (
                       <button
                         className="notes-toggle"

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ridesApi } from "../../api.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import TimeSelect from "../../components/TimeSelect.jsx";
+import RepeatFields, { repeatDates, repeatProblem, weekdayOf } from "./RepeatFields.jsx";
+import { shiftDate } from "../../lib/time.js";
 import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -11,6 +13,12 @@ import { campusParts } from "../../lib/time.js";
 function timeLabel(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+// "Add ride", or "Add 6 rides" when repeating.
+function submitLabel(repeat, date) {
+  const count = repeat && !repeatProblem(date, repeat.days, repeat.until) ? repeatDates(date, repeat.days, repeat.until).length : 1;
+  return count > 1 ? `Add ${count} rides` : "Add ride";
 }
 
 // Add or edit a ride. Shown inside a Modal by RidesPage.
@@ -41,6 +49,10 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
   const [dropoff, setDropoff] = useState(ride?.dropoff_name ?? "");
   const [notes, setNotes] = useState(ride?.notes ?? "");
   const [driverId, setDriverId] = useState(ride?.driver ?? "");
+  // New rides: repeat on some weekdays until a date (see RepeatFields).
+  const [repeat, setRepeat] = useState(null); // null = off, else { days, until }
+  // Editing a repeating ride: "" = only this ride, "following" = this and later rides.
+  const [scope, setScope] = useState("");
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
 
@@ -66,6 +78,12 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
     else if (timeChanged && date < today) found.pickup_time = "That date has already passed.";
     if (!pickup.trim()) found.pickup_name = "Enter where to pick them up.";
     if (!dropoff.trim()) found.dropoff_name = "Enter where to drop them off.";
+    if (repeat && date) {
+      const problem = repeatProblem(date, repeat.days, repeat.until);
+      if (problem) found.repeat = problem;
+    }
+    if (scope === "following" && date !== original.date)
+      found.pickup_time = "To move a repeating ride to another day, choose \"Only this ride\".";
     return found;
   }
 
@@ -87,10 +105,11 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
     // Sent without a time zone: the server reads it as campus time.
     // Only sent when changed, so editing an old ride doesn't trip date checks.
     if (timeChanged) data.pickup_time = `${date}T${time}`;
+    if (repeat) data.repeat = repeat;
 
     setBusy(true);
     try {
-      const saved = await (isEdit ? ridesApi.update(ride.id, data) : ridesApi.create(data));
+      const saved = await (isEdit ? ridesApi.update(ride.id, data, scope || undefined) : ridesApi.create(data));
       onSaved(saved);
     } catch (err) {
       const fieldErrors = Object.fromEntries(
@@ -159,6 +178,31 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
           </div>
         </div>
         {error("pickup_time")}
+        {!isEdit && (
+          <div className="repeat">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={repeat !== null}
+                onChange={(e) => {
+                  // Start with the first ride's weekday, for four weeks.
+                  setRepeat(e.target.checked ? { days: [weekdayOf(date)], until: shiftDate(date, 27) } : null);
+                  setErrors(({ repeat: _, ...rest }) => rest);
+                }}
+              />
+              Repeat this ride
+            </label>
+            {repeat && (
+              <RepeatFields
+                start={date}
+                days={repeat.days}
+                until={repeat.until}
+                onChange={edit("repeat", setRepeat)}
+                error={errors.repeat}
+              />
+            )}
+          </div>
+        )}
         <div className="form-row">
           <label className="field">
             <span>From <Req /></span>
@@ -203,6 +247,23 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
         </label>
       </fieldset>
 
+      {isEdit && ride.series && (
+        <fieldset className="form-section series-scope">
+          <legend>Repeating ride</legend>
+          <label className="toggle">
+            <input type="radio" name="scope" checked={scope === ""} onChange={() => setScope("")} />
+            Only this ride
+          </label>
+          <label className="toggle">
+            <input type="radio" name="scope" checked={scope === "following"} onChange={() => setScope("following")} />
+            This and later rides in the series
+          </label>
+          {scope === "following" && (
+            <p className="hint">Later rides keep their own dates. Rides already started are left alone.</p>
+          )}
+        </fieldset>
+      )}
+
       {(errors.form || errors.non_field_errors) && (
         <p className="error" role="alert">{errors.form || errors.non_field_errors}</p>
       )}
@@ -222,7 +283,7 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
           Cancel
         </button>
         <button type="submit" className="button" disabled={busy}>
-          {busy ? "Saving…" : isEdit ? "Save changes" : "Add ride"}
+          {busy ? "Saving…" : isEdit ? "Save changes" : submitLabel(repeat, date)}
         </button>
       </div>
     </form>

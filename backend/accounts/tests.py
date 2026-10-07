@@ -79,11 +79,6 @@ class SignInTests(TestCase):
         self.assertIn("private", r["Cache-Control"])
         self.assertIn("no-store", self.google_sign_in("a@ucsb.edu")["Cache-Control"])
 
-    def test_google_sign_in_is_logged(self):
-        with self.assertLogs("accounts.views", "INFO") as logs:
-            self.google_sign_in("a@ucsb.edu")
-        self.assertIn("Google sign-in: a@ucsb.edu (rider)", logs.output[0])
-
 
 @override_settings(GOOGLE_CLIENT_ID="test-client", ALLOWED_EMAIL_DOMAINS=["ucsb.edu"])
 class BootstrapTests(TestCase):

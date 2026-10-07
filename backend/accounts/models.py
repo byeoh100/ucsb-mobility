@@ -4,8 +4,10 @@ from common.phone import normalize_phone
 
 from .validators import normalize_email, validate_list_email
 
-# Preset driver colors, picked by the admin. Chosen to be distinct from each
-# other and readable as row accents on a white table.
+# Preset driver colors, picked by the admin: 12 colors, then a light version
+# of each (24 drivers). Chosen to be distinct from each other and visible as
+# dots on a white page. Add new colors at the end so existing ones keep
+# their place in the picker.
 DRIVER_COLORS = [
     ("#d93025", "Red"),
     ("#e8710a", "Orange"),
@@ -19,6 +21,18 @@ DRIVER_COLORS = [
     ("#d01884", "Pink"),
     ("#8d6e63", "Brown"),
     ("#5f6368", "Gray"),
+    ("#f28b82", "Light red"),
+    ("#fbb26a", "Light orange"),
+    ("#f2d24b", "Light gold"),
+    ("#c0dd8a", "Light lime"),
+    ("#6fcf8f", "Light green"),
+    ("#7fd8d8", "Light teal"),
+    ("#7fbcff", "Light blue"),
+    ("#a99cf0", "Light indigo"),
+    ("#dfa2f2", "Light purple"),
+    ("#f7a1cf", "Light pink"),
+    ("#d4a98c", "Light brown"),
+    ("#c4c7c5", "Light gray"),
 ]
 
 

@@ -75,7 +75,7 @@ class DriverApiTests(TestCase):
 
     def test_colors(self):
         colors = self.client.get("/api/drivers/colors/").json()
-        self.assertEqual(len(colors), 12)
+        self.assertEqual(len(colors), 24)
         self.assertEqual(set(colors[0]), {"value", "label"})
 
     def test_admin_only(self):
