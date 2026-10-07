@@ -155,8 +155,9 @@ function LiveStatus({ live, ride, token, onUpdate }) {
     detail = "Head to your pickup spot.";
   } else if (live.dropoffs_away > 0) {
     const n = live.dropoffs_away;
-    headline = `${live.driver.name} is ${n} drop-off${n === 1 ? "" : "s"} away`;
-    detail = n === 1 ? "You're next. You'll see here when they're on the way to you." : "You'll see here when they're on the way to you.";
+    // Rough: rides on board plus earlier pickups. Drivers may group nearby riders.
+    headline = `${live.driver.name} has ${n} other ride${n === 1 ? "" : "s"} first`;
+    detail = "You'll see here when they're on the way to you.";
   } else {
     headline = `${live.driver.name} will head your way soon`;
     detail = "You'll see when they're on the way.";

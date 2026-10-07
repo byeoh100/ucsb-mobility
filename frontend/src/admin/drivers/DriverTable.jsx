@@ -51,7 +51,7 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
               <td data-label="Email">{d.email}</td>
               <td className="nowrap" data-label="Phone">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
               <td data-label="Ride">
-                <CurrentRide ride={d.current_ride} location={d.location} timeZone={timeZone} />
+                <CurrentRides rides={d.current_rides} location={d.location} timeZone={timeZone} />
               </td>
               <td className="col-actions">
                 <button className="button-quiet" onClick={() => onEdit(d)} aria-label={`Edit ${d.name}`}>
@@ -75,26 +75,31 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
 
 // What the driver is doing right now: their ride that's on the way, and how
 // fresh their location is. The rider link shows where they are on the map.
-function CurrentRide({ ride, location, timeZone }) {
-  if (!ride) return <span className="muted">Not on a ride</span>;
+// Every ride the driver has on the way (riders can share the cart).
+function CurrentRides({ rides, location, timeZone }) {
+  if (!rides?.length) return <span className="muted">Not on a ride</span>;
   return (
     <span className="current-ride">
-      <span>
-        <strong>{ride.rider_name}</strong> · {formatTime(ride.pickup_time, timeZone)}
-      </span>
-      <span className="current-ride-route">
-        {ride.pickup_name} → {ride.dropoff_name}
-      </span>
+      {rides.map((ride) => (
+        <span key={ride.id} className="current-ride-item">
+          <span>
+            <strong>{ride.rider_name}</strong> · {formatTime(ride.pickup_time, timeZone)} ·{" "}
+            <a href={`/r/${ride.link_token}`} target="_blank" rel="noreferrer">Rider page</a>
+          </span>
+          <span className="current-ride-route">
+            {ride.pickup_name} → {ride.dropoff_name}
+          </span>
+        </span>
+      ))}
       <span className={`current-ride-location${location?.live ? " live" : ""}`}>
         {location ? (
           <>
             {location.live ? "● Location live" : `Location ${ageLabel(location.age_seconds)}`}
-            {!location.on_map && " (off map)"} ·{" "}
+            {!location.on_map && " (off map)"}
           </>
         ) : (
-          <span className="muted">No location yet · </span>
+          <span className="muted">No location yet</span>
         )}
-        <a href={`/r/${ride.link_token}`} target="_blank" rel="noreferrer">Rider page</a>
       </span>
     </span>
   );

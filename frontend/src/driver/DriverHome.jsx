@@ -4,8 +4,8 @@ import { ridesApi } from "../api.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import MobileLayout from "../layouts/MobileLayout.jsx";
 import { toMapPoint } from "../lib/geo.js";
-import { formatDayLabel, isValidDate, shiftDate, todayIn } from "../lib/time.js";
-import RideCard from "./RideCard.jsx";
+import { formatDayLabel, formatTime, isValidDate, shiftDate, todayIn } from "../lib/time.js";
+import CurrentRides from "./CurrentRides.jsx";
 import RideRow from "./RideRow.jsx";
 import useLocationSharing from "./useLocationSharing.js";
 
@@ -76,12 +76,31 @@ export default function DriverHome() {
   );
 
   const mine = (rides ?? []).filter((r) => r.driver === myId);
-  const current = isToday ? mine.find((r) => r.status === "on_the_way") : null;
-  const next = isToday ? mine.find((r) => r.status === "not_confirmed" && r !== current) : null;
-  const later = mine.filter((r) => r !== current && r !== next && r.status !== "completed");
+  // Current: every ride on the way (riders can share the cart), oldest first.
+  const current = isToday
+    ? mine.filter((r) => r.status === "on_the_way").sort((a, b) => (a.started_at < b.started_at ? -1 : 1))
+    : [];
+  const upcoming = mine.filter((r) => r.status === "not_confirmed");
+  // "Start next ride" picks the soonest one; drivers can pick any other with "Set as current".
+  const next = isToday ? upcoming[0] : null;
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState("");
+
+  async function startNext() {
+    setStarting(true);
+    setStartError("");
+    try {
+      await ridesApi.start(next.id);
+      await load();
+    } catch (err) {
+      setStartError(err.message);
+    } finally {
+      setStarting(false);
+    }
+  }
 
   // Share GPS only while a ride is on the way; also drives the "You" dot.
-  const { position, state: sharing } = useLocationSharing(Boolean(current));
+  const { position, state: sharing } = useLocationSharing(current.length > 0);
   const you = position ? toMapPoint(position, config.map_calibration) : null;
   const done = mine.filter((r) => r.status === "completed");
 
@@ -127,23 +146,32 @@ export default function DriverHome() {
 
         {rides && view === "mine" && (
           <>
-            {current && (
+            {isToday && mine.length > 0 && (
               <section className="stack">
-                <h2 className="section-title">On the way</h2>
-                {/* key: a different ride gets a fresh card (map, errors), not the old one's state */}
-                <RideCard key={current.id} {...cardProps(current)} highlight="current" mapOpen you={you} sharing={sharing} />
+                <h2 className="section-title">{current.length > 1 ? `Current rides (${current.length})` : "Current ride"}</h2>
+                {current.length > 0 ? (
+                  <CurrentRides rides={current} cardProps={cardProps} you={you} sharing={sharing} />
+                ) : (
+                  <p className="current-empty muted">No current ride.</p>
+                )}
               </section>
             )}
             {next && (
-              <section className="stack">
-                <h2 className="section-title">Up next</h2>
-                <RideCard key={next.id} {...cardProps(next)} highlight="next" mapOpen={!current} />
-              </section>
+              <div className="start-next">
+                <button className="button otw-button" onClick={startNext} disabled={starting}>
+                  {starting ? "Starting…" : current.length > 0 ? "Add next ride" : "Start next ride"}
+                </button>
+                <span className="hint">
+                  {formatTime(next.pickup_time, timeZone)} · {next.rider_name} · {next.pickup_name}
+                </span>
+                {startError && <p className="error" role="alert">{startError}</p>}
+              </div>
             )}
-            {later.length > 0 && (
+            {upcoming.length > 0 && (
               <section className="stack">
-                <h2 className="section-title">{isToday ? "Later" : "Your rides"}</h2>
-                <ul className="ride-list">{later.map((r) => row(r, false))}</ul>
+                <h2 className="section-title">Your rides</h2>
+                {isToday && <p className="hint">Tap a ride to see it, or set it as current to pick it up out of order.</p>}
+                <ul className="ride-list">{upcoming.map((r) => row(r, false))}</ul>
               </section>
             )}
             {mine.length === 0 && (
@@ -152,7 +180,7 @@ export default function DriverHome() {
                 <p className="muted">Check All rides to see who's driving what.</p>
               </div>
             )}
-            {mine.length > 0 && !current && !next && later.length === 0 && (
+            {mine.length > 0 && current.length === 0 && upcoming.length === 0 && (
               <p className="muted">You're done for {isToday ? "today" : "this day"}.</p>
             )}
             {done.length > 0 && (

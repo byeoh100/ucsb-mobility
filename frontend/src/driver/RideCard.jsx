@@ -6,7 +6,7 @@ import { formatPhone } from "../lib/phone.js";
 import { formatTime } from "../lib/time.js";
 
 // Everything a driver needs for one ride: who, where, the map, a call
-// button, and (for their own rides today) On the way / Undo.
+// button, and (for their own rides today) Set as current / Undo / Mark complete.
 //
 // Props:
 //   ride        the ride
@@ -14,7 +14,7 @@ import { formatTime } from "../lib/time.js";
 //   canStart    mine, today, and not completed
 //   canReopen   mine, today, and marked complete by the driver
 //   timeZone    campus time zone
-//   onChanged   () => void, after On the way / Undo, to refresh the list
+//   onChanged   () => void, after an action, to refresh the list
 //   highlight   "current" | "next" | undefined, for emphasis
 //   mapOpen     show the map right away (only the top card does, so the
 //               screen isn't two full-size maps tall)
@@ -108,7 +108,8 @@ export default function RideCard({ ride, mine, canStart, canReopen, timeZone, on
         </a>
         {canStart && !onTheWay && (
           <button className="button otw-button" onClick={() => run(ridesApi.start)} disabled={busy}>
-            {busy ? "Starting…" : "On the way"}
+            {/* Riders see "on the way" once it's current. */}
+            {busy ? "Starting…" : "Set as current"}
           </button>
         )}
         {canStart && onTheWay && (
@@ -119,11 +120,11 @@ export default function RideCard({ ride, mine, canStart, canReopen, timeZone, on
                 Undo
               </button>
             </div>
-            {/* Optional: if not tapped, the ride completes on its own. */}
+            {/* How a ride ends; if never tapped, it ends 60 min after pickup. */}
             <button className="button-quiet mark-complete" onClick={() => run(ridesApi.complete)} disabled={busy}>
               ✓ Mark complete
             </button>
-            <span className="hint">Optional, if you finish early. Closes the rider's page now.</span>
+            <span className="hint">Tap when you drop this rider off. Closes their page.</span>
           </>
         )}
         {canReopen && (
