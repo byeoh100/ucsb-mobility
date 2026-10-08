@@ -274,7 +274,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
   margin-right: 0.6rem; color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
 }
 .notes-text, .ride-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
-.ride-card-route dd.ride-notes { font-weight: 400; }
+.ride-notes { font-weight: 400; }
 .swatch-small { width: 0.7rem; height: 0.7rem; margin-right: 0.45rem; }
 .status {
   display: inline-block; font-size: 0.8rem; font-weight: 600;
@@ -360,8 +360,7 @@ select {
   border: 1px solid var(--border); border-radius: 12px; padding: 1rem;
   display: flex; flex-direction: column; gap: 0.75rem; background: var(--surface);
 }
-.ride-card-current { border: 2px solid var(--success); }
-.ride-card-next { border: 2px solid var(--accent); }
+.ride-card-current { border: 2px solid var(--success); overflow: hidden; }
 
 /* Current ride(s): one tab per passenger when riders share the cart */
 .current-rides { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -377,24 +376,55 @@ select {
   margin: 0; padding: 0.9rem 1rem; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center;
 }
 .start-next { display: flex; flex-direction: column; gap: 0.35rem; align-items: stretch; text-align: center; }
-.ride-card-top { display: flex; justify-content: space-between; align-items: center; }
+.ride-card-top { display: flex; align-items: center; gap: 0.6rem; }
 .ride-card-time { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.ride-card-rider { display: flex; flex-direction: column; gap: 0.2rem; }
+.ride-card-rider { display: flex; align-items: center; gap: 0.6rem; }
 .ride-card-name { font-size: 1.2rem; font-weight: 600; }
 .confirmed-badge { align-self: flex-start; font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--selected-bg); padding: 0.2rem 0.65rem; border-radius: 999px; }
-.ride-card-route { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem; margin: 0; }
-.ride-card-route dt { color: var(--muted); }
-.ride-card-route dd { margin: 0; font-weight: 600; }
-.ride-card-actions { display: flex; flex-direction: column; gap: 0.6rem; }
-.call-button { padding: 0.7rem; font-weight: 600; }
+/* Rider said they'll be there (👍) or not yet (❌), next to the time */
+.rider-badge { font-size: 0.8rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap; }
+.rider-badge-yes { color: var(--text); background: var(--selected-bg); }
+.rider-badge-no { color: var(--danger); background: #FBEAE7; box-shadow: inset 0 0 0 1px #F2C4BC; }
+/* ✕: take the ride back out of Current */
+.remove-current {
+  margin-left: auto; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  font: inherit; font-size: 1rem; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.remove-current:hover { color: var(--danger); border-color: var(--danger); }
+/* Round phone button: the one tappable thing on the rider's line */
+.call-circle {
+  display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; flex: none; border-radius: 50%;
+  background: var(--accent); color: var(--white);
+}
+.call-circle svg { width: 1.15rem; height: 1.15rem; fill: currentColor; }
+.call-circle:hover { background: var(--ucsb-navy); }
+.call-circle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Library → Bren Hall, with the map pin colors */
+.route-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-weight: 600; }
+.route-arrow { color: var(--muted); font-weight: 700; }
+.notes-section { display: flex; flex-direction: column; gap: 0.2rem; }
+.notes-section p { margin: 0; }
+.notes-heading { margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.02em; }
+/* Mark complete: a solid bar that is the bottom edge of the current card */
+.mark-complete-bar {
+  margin: 0.25rem -1rem -1rem; padding: 0.95rem 1rem; border: 0; border-radius: 0;
+  background: var(--success); color: var(--white); font: inherit; font-size: 1.15rem; font-weight: 800;
+  cursor: pointer;
+}
+.mark-complete-bar:hover { filter: brightness(0.93); }
+.mark-complete-bar:disabled { opacity: 0.7; cursor: default; }
+.mark-complete-bar:focus-visible { outline: 3px solid var(--highlight); outline-offset: -3px; }
 .otw-button { min-height: 3.25rem; font-size: 1.15rem; background: var(--success); }
-.otw-done { display: flex; justify-content: space-between; align-items: center; color: var(--success); font-weight: 700; }
 
 /* Compact rows */
 .ride-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .ride-row { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .ride-row.expanded { border-color: var(--accent); }
-.ride-row .ride-card { border: 0; border-top: 1px solid var(--border); border-radius: 0 0 10px 10px; }
+.ride-row-details { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.8rem; border-top: 1px solid var(--border); }
+.row-driver { margin: 0; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+.row-done { margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; font-weight: 600; }
+.ride-row-chevron { color: var(--muted); }
 .ride-row-summary {
   font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left;
   width: 100%; display: grid; grid-template-columns: 5.3rem 1fr auto; gap: 0.5rem; align-items: center;
@@ -405,7 +435,6 @@ select {
 .ride-row-name { font-weight: 600; display: flex; align-items: center; gap: 0.1rem; }
 .ride-row-name .swatch-small { margin-right: 0.4rem; }
 .ride-row-route { font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ride-row .status { font-size: 0.72rem; }
 .done-rides summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 0.4rem 0; }
 .done-rides .ride-list { margin-top: 0.5rem; }
 
@@ -633,7 +662,6 @@ select {
 .day-switch.date-stepper .stepper-button:disabled { color: var(--border); cursor: default; background: none; }
 .day-switch-label { flex: 1; text-align: center; align-self: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0.5rem; color: var(--accent); }
 .ride-card-time, .ride-row-time { color: var(--accent); }
-.ride-card-route dt { white-space: nowrap; }
 .done-rides summary {
   list-style: none; display: flex; justify-content: space-between; align-items: center;
   padding: 0.6rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -648,10 +676,6 @@ select {
 .backup-login summary { cursor: pointer; color: var(--accent); font-weight: 700; }
 .backup-login form { margin-top: 0.9rem; }
 
-/* Mark complete (optional, driver) */
-.mark-complete { padding: 0.65rem; font-weight: 700; }
-.ride-card-actions .hint { text-align: center; margin-top: -0.3rem; }
-.marked-complete { color: var(--text); }
 
 /* Icon buttons (copy link) */
 .icon { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; display: block; }
@@ -687,4 +711,3 @@ select {
 .req { color: var(--danger); font-weight: 700; margin-left: 0.15rem; }
 .required-note { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
-.has-notes { margin-left: 0.3rem; }

@@ -22,7 +22,7 @@ export default function CurrentRides({ rides, cardProps, you, sharing }) {
 
   const card = (ride) => (
     // key: a different ride gets a fresh card (map, errors), not the old one's state
-    <RideCard key={ride.id} {...cardProps(ride)} highlight="current" mapOpen you={you} sharing={sharing} />
+    <RideCard key={ride.id} {...cardProps(ride)} you={you} sharing={sharing} />
   );
 
   if (rides.length === 1) return card(rides[0]);

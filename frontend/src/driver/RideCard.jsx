@@ -1,31 +1,72 @@
 import { useState } from "react";
 import { ridesApi } from "../api.js";
 import CampusMap, { LocationDot } from "../components/CampusMap.jsx";
-import { STATUS_LABELS } from "../admin/rides/RideTable.jsx";
 import { formatPhone } from "../lib/phone.js";
 import { formatTime } from "../lib/time.js";
 
-// Everything a driver needs for one ride: who, where, the map, a call
-// button, and (for their own rides today) Set as current / Undo / Mark complete.
+// A current ride (on the way): who, where, the map, notes, and Mark complete.
+// Being in Current means "on the way", so there's no On the way / Undo; the ✕
+// takes the ride back out of Current (the rider's page goes back to waiting).
 //
 // Props:
-//   ride        the ride
-//   mine        is it the signed-in driver's ride?
-//   canStart    mine, today, and not completed
-//   canReopen   mine, today, and marked complete by the driver
-//   timeZone    campus time zone
-//   onChanged   () => void, after an action, to refresh the list
-//   highlight   "current" | "next" | undefined, for emphasis
-//   mapOpen     show the map right away (only the top card does, so the
-//               screen isn't two full-size maps tall)
-//   you         { x, y, onMap } the driver's own position on the map, if known
-//   sharing     location-sharing state, shown on the ride that's on the way
-export default function RideCard({ ride, mine, canStart, canReopen, timeZone, onChanged, highlight, mapOpen = false, you, sharing }) {
+//   ride       the ride
+//   timeZone   campus time zone
+//   onChanged  () => void, after an action, to refresh the list
+//   you        { x, y, onMap } the driver's own position on the map, if known
+//   sharing    location-sharing state
+export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
   const [busy, setBusy] = useState(false);
-  const [showMap, setShowMap] = useState(mapOpen);
   const [error, setError] = useState("");
+  const run = useAction(ride, onChanged, setBusy, setError);
 
-  async function run(action) {
+  return (
+    <article className="ride-card ride-card-current">
+      <div className="ride-card-top">
+        <span className="ride-card-time">{formatTime(ride.pickup_time, timeZone)}</span>
+        <RiderConfirmed confirmed={ride.rider_confirmed} />
+        <button
+          className="remove-current"
+          onClick={() => run(ridesApi.unstart)}
+          disabled={busy}
+          aria-label={`Remove ${ride.rider_name} from current rides`}
+          title="Remove from current rides"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="ride-card-rider">
+        <span className="ride-card-name">{ride.rider_name}</span>
+        <CallButton ride={ride} />
+      </div>
+
+      <RouteLine ride={ride} />
+
+      {sharing && <SharingStatus state={sharing} />}
+
+      <CampusMap
+        pickup={ride.pickup_pin}
+        dropoff={ride.dropoff_pin}
+        note={you && !you.onMap ? "You're outside the map area." : null}
+      >
+        {you?.onMap && <LocationDot point={you} label="You" />}
+      </CampusMap>
+
+      <NotesSection notes={ride.notes} />
+
+      {error && <p className="error" role="alert">{error}</p>}
+
+      {/* The way a ride ends (if never tapped, it ends 60 min after pickup). */}
+      <button className="mark-complete-bar" onClick={() => run(ridesApi.complete)} disabled={busy}>
+        {busy ? "Saving…" : "✓ Mark complete"}
+      </button>
+    </article>
+  );
+}
+
+// Runs a ride action (start, complete, ...) then refreshes the list.
+export function useAction(ride, onChanged, setBusy, setError) {
+  return async function run(action) {
     setBusy(true);
     setError("");
     try {
@@ -36,108 +77,52 @@ export default function RideCard({ ride, mine, canStart, canReopen, timeZone, on
     } finally {
       setBusy(false);
     }
-  }
+  };
+}
 
-  const onTheWay = ride.status === "on_the_way";
+// 👍 Confirmed / ❌ Not confirmed: whether the rider said they'll be there.
+export function RiderConfirmed({ confirmed }) {
+  return confirmed ? (
+    <span className="rider-badge rider-badge-yes">👍 Confirmed</span>
+  ) : (
+    <span className="rider-badge rider-badge-no">❌ Not confirmed</span>
+  );
+}
 
+// Round phone button: the only tappable thing on the rider's line.
+export function CallButton({ ride }) {
   return (
-    <article className={`ride-card${highlight ? ` ride-card-${highlight}` : ""}`}>
-      <div className="ride-card-top">
-        <span className="ride-card-time">{formatTime(ride.pickup_time, timeZone)}</span>
-        {ride.status && <span className={`status status-${ride.status}`}>{STATUS_LABELS[ride.status]}</span>}
-      </div>
+    <a
+      className="call-circle"
+      href={`tel:+1${ride.rider_phone}`}
+      aria-label={`Call ${ride.rider_name}, ${formatPhone(ride.rider_phone)}`}
+      title={`Call ${formatPhone(ride.rider_phone)}`}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z" />
+      </svg>
+    </a>
+  );
+}
 
-      <div className="ride-card-rider">
-        <span className="ride-card-name">{ride.rider_name}</span>
-        {ride.rider_confirmed ? (
-          <span className="confirmed-badge">👍 Rider confirmed</span>
-        ) : (
-          onTheWay && <span className="muted small">Waiting for rider to confirm</span>
-        )}
-      </div>
+// 🟢 Library → 🔴 Bren Hall (same colors as the map pins)
+export function RouteLine({ ride }) {
+  return (
+    <p className="route-line">
+      <span className="legend legend-pickup">{ride.pickup_name}</span>
+      <span className="route-arrow" aria-label="to">→</span>
+      <span className="legend legend-dropoff">{ride.dropoff_name}</span>
+    </p>
+  );
+}
 
-      <dl className="ride-card-route">
-        {/* Same colored dots as the map pins and the rider's page */}
-        <dt className="legend legend-pickup">Pick up</dt>
-        <dd>{ride.pickup_name}</dd>
-        <dt className="legend legend-dropoff">Drop off</dt>
-        <dd>{ride.dropoff_name}</dd>
-        {/* Notes come only with your own rides (the server leaves them out otherwise). */}
-        {ride.notes && (
-          <>
-            <dt>Notes</dt>
-            <dd className="ride-notes">{ride.notes}</dd>
-          </>
-        )}
-        {!mine && (
-          <>
-            <dt>Driver</dt>
-            <dd>
-              {ride.driver_name ? (
-                <>
-                  <span className="swatch swatch-small" style={{ background: ride.driver_color }} aria-hidden="true" />
-                  {ride.driver_name}
-                </>
-              ) : (
-                <span className="muted">Unassigned</span>
-              )}
-            </dd>
-          </>
-        )}
-      </dl>
-
-      {sharing && <SharingStatus state={sharing} />}
-
-      {showMap ? (
-        <CampusMap
-          pickup={ride.pickup_pin}
-          dropoff={ride.dropoff_pin}
-          note={you && !you.onMap ? "You're outside the map area." : null}
-        >
-          {you?.onMap && <LocationDot point={you} label="You" />}
-        </CampusMap>
-      ) : (
-        <button className="button-quiet show-map" onClick={() => setShowMap(true)}>
-          Show map{ride.pickup_pin || ride.dropoff_pin ? " (rider marked spots)" : ""}
-        </button>
-      )}
-
-      <div className="ride-card-actions">
-        <a className="button-quiet call-button" href={`tel:+1${ride.rider_phone}`}>
-          Call {formatPhone(ride.rider_phone)}
-        </a>
-        {canStart && !onTheWay && (
-          <button className="button otw-button" onClick={() => run(ridesApi.start)} disabled={busy}>
-            {/* Riders see "on the way" once it's current. */}
-            {busy ? "Starting…" : "Set as current"}
-          </button>
-        )}
-        {canStart && onTheWay && (
-          <>
-            <div className="otw-done">
-              <span>On the way since {formatTime(ride.started_at, timeZone)}</span>
-              <button className="button-quiet" onClick={() => run(ridesApi.unstart)} disabled={busy}>
-                Undo
-              </button>
-            </div>
-            {/* How a ride ends; if never tapped, it ends 60 min after pickup. */}
-            <button className="button-quiet mark-complete" onClick={() => run(ridesApi.complete)} disabled={busy}>
-              ✓ Mark complete
-            </button>
-            <span className="hint">Tap when you drop this rider off. Closes their page.</span>
-          </>
-        )}
-        {canReopen && (
-          <div className="otw-done marked-complete">
-            <span>Marked complete at {formatTime(ride.completed_at, timeZone)}</span>
-            <button className="button-quiet" onClick={() => run(ridesApi.reopen)} disabled={busy}>
-              Reopen
-            </button>
-          </div>
-        )}
-      </div>
-      {error && <p className="error" role="alert">{error}</p>}
-    </article>
+// Always shown under the map, so drivers can read notes while looking at it.
+export function NotesSection({ notes }) {
+  return (
+    <section className="notes-section">
+      <h3 className="notes-heading">Notes</h3>
+      {notes ? <p className="ride-notes">{notes}</p> : <p className="muted">No notes</p>}
+    </section>
   );
 }
 

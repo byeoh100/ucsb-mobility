@@ -3,7 +3,7 @@ import { formatPhone } from "../../lib/phone.js";
 import { formatTime } from "../../lib/time.js";
 
 export const STATUS_LABELS = {
-  not_confirmed: "Not confirmed",
+  not_confirmed: "Not started", // the driver hasn't set off yet (not about the rider)
   on_the_way: "On the way",
   completed: "Completed",
 };

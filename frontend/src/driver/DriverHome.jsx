@@ -81,7 +81,7 @@ export default function DriverHome() {
     ? mine.filter((r) => r.status === "on_the_way").sort((a, b) => (a.started_at < b.started_at ? -1 : 1))
     : [];
   const upcoming = mine.filter((r) => r.status === "not_confirmed");
-  // "Start next ride" picks the soonest one; drivers can pick any other with "Set as current".
+  // "Start next ride" picks the soonest one; drivers can pick any other with "On the way!".
   const next = isToday ? upcoming[0] : null;
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
@@ -170,7 +170,7 @@ export default function DriverHome() {
             {upcoming.length > 0 && (
               <section className="stack">
                 <h2 className="section-title">Your rides</h2>
-                {isToday && <p className="hint">Tap a ride to see it, or set it as current to pick it up out of order.</p>}
+                {isToday && <p className="hint">Tap a ride for its map and notes, or to pick it up out of order.</p>}
                 <ul className="ride-list">{upcoming.map((r) => row(r, false))}</ul>
               </section>
             )}
