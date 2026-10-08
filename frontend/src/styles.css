@@ -174,6 +174,7 @@ dialog.modal {
 }
 .modal::backdrop { background: rgba(0, 54, 96, 0.5); }
 .modal-title { font-size: 1.25rem; margin: 0 0 1.25rem; }
+.confirm-subject { color: var(--success); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
 /* QuickConfirm: the usual dialog, with ✕ / ✓ buttons */
 dialog.modal.quick-confirm { width: min(360px, calc(100vw - 2rem)); }
@@ -223,18 +224,19 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .date-input { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
 
 /* Rides: table. Fixed layout + shared column widths keep both tables aligned. */
-.ride-table { table-layout: fixed; min-width: 85.5rem; } /* = fixed columns + 9rem for email */
+.ride-table { table-layout: fixed; min-width: 86rem; } /* = fixed columns + 8rem for each place */
 .ride-table td { padding: 0.55rem 0.7rem; }
 .ride-table .c-time { width: 6rem; }
 .ride-table .c-rider { width: 9.5rem; }
 .ride-table .c-phone { width: 10.5rem; }
-.ride-table .c-place { width: 9.75rem; }
+.ride-table .c-email { width: 9.5rem; }
+.ride-table .c-notes { width: 4rem; }
 .ride-table .c-driver { width: 9rem; }
 .ride-table .c-status { width: 10rem; }
 .ride-table .c-link { width: 7.5rem; }
 .ride-table .c-actions { width: 4.5rem; }
-/* c-email has no width: it takes the rest. The table's min-width guarantees
-   it at least 9rem; below that the table scrolls instead of crushing it. */
+/* c-place has no width: From and To share the rest. The table's min-width
+   guarantees them 8rem each; below that the table scrolls instead. */
 .ride-table td.email { overflow-wrap: anywhere; } /* last resort; normally breaks at the @ */
 .ride-table th { padding: 0; }
 .sort-button {
@@ -265,13 +267,13 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .series-scope { display: flex; flex-direction: column; gap: 0.45rem; border: 0; padding: 0; margin: 0; }
 .series-scope legend { font-weight: 600; margin-bottom: 0.4rem; padding: 0; }
 
-/* Ride notes: a small toggle by the rider's name opens a row underneath. */
+/* Ride notes: a ▾ in the Notes column opens a row underneath (empty if none). */
 .notes-toggle {
-  margin-left: 0.5rem; padding: 0.05rem 0.5rem; border: 1px solid var(--border); border-radius: 999px;
-  background: var(--surface); color: var(--accent); font: inherit; font-size: 0.75rem; font-weight: 600;
-  cursor: pointer; white-space: nowrap; vertical-align: 0.1em;
+  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  color: var(--accent); font: inherit; font-size: 0.9rem; line-height: 1; cursor: pointer;
 }
-.notes-toggle:hover { border-color: var(--accent); }
+.notes-toggle:hover, .notes-toggle[aria-expanded="true"] { border-color: var(--accent); }
 .ride-table tr.notes-open td { border-bottom: 0; }
 .ride-table .notes-row td { padding-top: 0; font-weight: 400; }
 .notes-label {
@@ -291,7 +293,12 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .button-small { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
 
 /* Rides: unassigned bar */
-.unassigned { display: flex; flex-direction: column; gap: 0.6rem; }
+.unassigned { display: flex; flex-direction: column; }
+/* Open: the bar sits on top of its table as one box */
+.unassigned.open .unassigned-bar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.unassigned.open .table-wrap {
+  border-color: var(--notice-border); border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;
+}
 .unassigned-bar {
   font: inherit; display: flex; justify-content: space-between; align-items: center;
   width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius); cursor: pointer;
@@ -367,8 +374,9 @@ select {
 .ride-card-current { border: 3px solid var(--success); overflow: hidden; }
 /* Head: time, badge and name on the left; ✕ over 📞 on the right */
 .ride-card-head { display: flex; align-items: flex-start; gap: 0.75rem; }
-.ride-card-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.ride-card-head-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+.ride-card-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.ride-card-head .ride-card-time, .ride-card-head .ride-card-name { line-height: 1.2; }
+.ride-card-head-actions { display: flex; flex-direction: column; gap: 0.4rem; }
 
 /* Current ride(s): one tab per passenger when riders share the cart */
 .current-rides { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -447,6 +455,7 @@ select {
 /* Campus map */
 .campus-map { margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 .campus-map-frame { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); line-height: 0; }
+.campus-map-frame.marked { border: 1.5px solid var(--success); } /* the rider marked spots */
 .campus-map-frame img { width: 100%; height: auto; display: block; user-select: none; }
 .map-pin {
   position: absolute; width: 28px; height: 37px;
@@ -503,6 +512,15 @@ select {
 .rider-day { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
 .rider-time { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rider-route { font-size: 1.1rem; font-weight: 600; }
+/* Time and route on the left, live status on the right */
+.rider-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+.rider-top .rider-time { font-size: 1.9rem; }
+.rider-top .rider-route div { grid-template-columns: 1fr; }
+.rider-top .rider-route dd { font-size: 1rem; }
+.rider-top .live-status, .rider-top .notice { padding: 0.75rem; }
+.rider-top .live-headline { font-size: 1.05rem; }
+.rider-top .thumbs-up { min-height: 2.75rem; font-size: 1rem; }
+@media (max-width: 330px) { .rider-top { grid-template-columns: 1fr; } }
 .live-status { border: 2px solid var(--border); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .live-status.on-the-way { border-color: var(--success); background: var(--selected-bg); }
 .live-headline { margin: 0; font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
@@ -644,7 +662,9 @@ select {
     font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
   }
   .table td.col-actions { width: auto; justify-content: flex-end; padding-top: 0.4rem; }
+  .unassigned.open .table-wrap { padding-top: 0.6rem; }
   .ride-table td.email { overflow-wrap: anywhere; }
+  .ride-table td.notes-cell.empty { display: none; } /* no notes: no empty "Notes" line on the card */
   /* An open notes row joins the card above it. */
   .ride-table tbody tr.notes-open { margin-bottom: 0; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
   .ride-table tbody tr.notes-row { border-top: 0; border-radius: 0 0 var(--radius) var(--radius); padding-top: 0.15rem; }

@@ -75,26 +75,29 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
 
   return (
     <>
-      <section className="rider-summary">
-        <span className="rider-day">{dayLabel}</span>
-        <span className="rider-time">{formatTime(ride.pickup_time, timeZone)}</span>
-        <dl className="rider-route">
-          <div>
-            <dt className="legend legend-pickup">Pick up</dt>
-            <dd>{ride.pickup_name}</dd>
-          </div>
-          <div>
-            <dt className="legend legend-dropoff">Drop off</dt>
-            <dd>{ride.dropoff_name}</dd>
-          </div>
-        </dl>
-      </section>
+      {/* Time and route beside the live status, so the map sits higher up. */}
+      <div className="rider-top">
+        <section className="rider-summary">
+          <span className="rider-day">{dayLabel}</span>
+          <span className="rider-time">{formatTime(ride.pickup_time, timeZone)}</span>
+          <dl className="rider-route">
+            <div>
+              <dt className="legend legend-pickup">Pick up</dt>
+              <dd>{ride.pickup_name}</dd>
+            </div>
+            <div>
+              <dt className="legend legend-dropoff">Drop off</dt>
+              <dd>{ride.dropoff_name}</dd>
+            </div>
+          </dl>
+        </section>
 
-      {live ? (
-        <LiveStatus live={live} ride={ride} token={token} onUpdate={onUpdate} />
-      ) : (
-        <p className="notice">Live updates start at {formatTime(ride.tracking_starts_at, timeZone)}, 20 minutes before pickup.</p>
-      )}
+        {live ? (
+          <LiveStatus live={live} ride={ride} token={token} onUpdate={onUpdate} />
+        ) : (
+          <p className="notice">Live updates start at {formatTime(ride.tracking_starts_at, timeZone)}, 20 minutes before pickup.</p>
+        )}
+      </div>
 
       <section className="stack">
         <h2 className="section-title">{editingPins ? "Mark your spots" : "Campus map"}</h2>
@@ -111,7 +114,6 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
               pickup={ride.pickup_pin}
               dropoff={ride.dropoff_pin}
               note={driverNote(live)}
-              emptyNote={null}
             >
               {live?.driver_location?.on_map && (
                 <LocationDot
@@ -124,7 +126,6 @@ function ActiveRide({ data, token, timeZone, onUpdate }) {
             <button className="button-quiet" onClick={() => setEditingPins(true)}>
               {hasPins ? "Change my pickup & drop-off spots" : "Mark my pickup & drop-off spots (optional)"}
             </button>
-            {!hasPins && <p className="hint">Helps your driver find you, especially at big buildings.</p>}
           </>
         )}
       </section>
@@ -210,7 +211,7 @@ function DispatchContact({ phone }) {
   return (
     <section className="dispatch-contact">
       <span>
-        <strong>Questions about your ride?</strong>
+        <strong>Need assistance?</strong>
         <span className="muted"> Dispatch can help.</span>
       </span>
       <a className="button-quiet call-dispatch" href={`tel:+1${digits}`}>

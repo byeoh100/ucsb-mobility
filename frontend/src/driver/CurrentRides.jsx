@@ -59,9 +59,6 @@ export default function CurrentRides({ rides, cardProps, you, sharing }) {
       >
         {card(active)}
       </div>
-      <p className="hint passenger-count">
-        {rides.length} riders on board · {activeIndex + 1} of {rides.length}. Swipe or tap a name to switch.
-      </p>
     </div>
   );
 }

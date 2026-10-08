@@ -7,7 +7,7 @@ import Modal from "./Modal.jsx";
 //
 // Props:
 //   open, onClose
-//   title         the question
+//   title         the question (text, or text with a highlighted part)
 //   yesLabel      what ✓ does, for screen readers ("Yes, remove")
 //   onConfirm     () => void, for an action; or
 //   confirmHref   a link to follow instead (e.g. tel:)

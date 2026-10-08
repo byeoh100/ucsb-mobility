@@ -156,7 +156,7 @@ const SHARING_MESSAGES = {
   locating: ["muted", "Finding your location…"],
   slow: ["warn", "Still finding your location. If your phone asked to share your location, tap Allow."],
   sharing: ["ok", "Sharing your location with the rider"],
-  denied: ["warn", "Location is blocked. Allow location for this site so your rider can see you coming."],
+  denied: ["warn", "Location is blocked"],
   unavailable: ["warn", "Can't get your location right now. Your rider will still see that you're on the way."],
 };
 

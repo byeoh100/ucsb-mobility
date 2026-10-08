@@ -120,7 +120,11 @@ function DoneRow({ ride, timeZone, canReopen, onChanged }) {
       <QuickConfirm
         open={asking}
         onClose={() => setAsking(false)}
-        title="Reopen?"
+        title={
+          <>
+            Reopen: <span className="confirm-subject">{formatTime(ride.pickup_time, timeZone)} {ride.rider_name}</span>?
+          </>
+        }
         yesLabel={`Yes, reopen ${ride.rider_name}'s ride`}
         onConfirm={() => run(ridesApi.reopen)}
       />

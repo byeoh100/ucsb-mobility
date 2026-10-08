@@ -5,35 +5,26 @@ import mapUrl from "../assets/campus-map.jpg";
 // land in the same place at any size. Shared by the driver view and the
 // rider page; `children` can add overlays (e.g. the driver's location, later).
 //
-// Props: pickup, dropoff ({ x, y } or null), children, note (extra caption text),
-//        emptyNote (caption when there are no pins; the default is worded for drivers)
-export default function CampusMap({
-  pickup,
-  dropoff,
-  children,
-  note,
-  emptyNote = "The rider hasn't marked spots on the map.",
-}) {
+// A thin green outline means the rider marked spots.
+//
+// Props: pickup, dropoff ({ x, y } or null), children, note (extra caption text)
+export default function CampusMap({ pickup, dropoff, children, note }) {
   const hasPins = Boolean(pickup || dropoff);
   return (
     <figure className="campus-map">
-      <div className="campus-map-frame">
+      <div className={`campus-map-frame${hasPins ? " marked" : ""}`}>
         <img src={mapUrl} alt="Map of the UCSB campus" draggable={false} />
         {pickup && <Pin point={pickup} kind="pickup" label="Pickup" />}
         {dropoff && <Pin point={dropoff} kind="dropoff" label="Drop-off" />}
         {children}
       </div>
-      <figcaption className="campus-map-caption">
-        {hasPins ? (
-          <>
-            {pickup && <span className="legend legend-pickup">Pickup</span>}
-            {dropoff && <span className="legend legend-dropoff">Drop-off</span>}
-          </>
-        ) : (
-          emptyNote && <span className="muted">{emptyNote}</span>
-        )}
-        {note && <span className="campus-map-note">{note}</span>}
-      </figcaption>
+      {(hasPins || note) && (
+        <figcaption className="campus-map-caption">
+          {pickup && <span className="legend legend-pickup">Pickup</span>}
+          {dropoff && <span className="legend legend-dropoff">Drop-off</span>}
+          {note && <span className="campus-map-note">{note}</span>}
+        </figcaption>
+      )}
     </figure>
   );
 }

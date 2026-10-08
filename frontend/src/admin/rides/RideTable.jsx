@@ -59,7 +59,7 @@ export function sortRides(rides, { key, dir }, readOnly = false) {
 export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readOnly = false }) {
   const columns = columnsFor(readOnly);
   const sorted = sortRides(rides, sort, readOnly);
-  const columnCount = columns.length + (readOnly ? 0 : 2);
+  const columnCount = columns.length + 1 + (readOnly ? 0 : 2); // +1: Notes
   // Rides whose notes are open (a small dropdown under the row).
   const [openNotes, setOpenNotes] = useState(() => new Set());
   const toggleNotes = (id) =>
@@ -78,7 +78,10 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
       <table className={`table ride-table${readOnly ? " read-only" : ""}`}>
         <colgroup>
           {columns.map((c) => (
-            <col key={c.key} className={c.className} />
+            <Fragment key={c.key}>
+              <col className={c.className} />
+              {c.key === "email" && <col className="c-notes" />}
+            </Fragment>
           ))}
           {!readOnly && <col className="c-link" />}
           {!readOnly && <col className="c-actions" />}
@@ -88,14 +91,17 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
             {columns.map((c) => {
               const active = sort.key === c.key;
               return (
-                <th key={c.key} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
-                  <button className="sort-button" onClick={() => clickHeader(c.key)}>
-                    {c.label}
-                    <span className={`sort-arrow${active ? " active" : ""}`} aria-hidden="true">
-                      {active && sort.dir === "desc" ? "▼" : "▲"}
-                    </span>
-                  </button>
-                </th>
+                <Fragment key={c.key}>
+                  <th aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+                    <button className="sort-button" onClick={() => clickHeader(c.key)}>
+                      {c.label}
+                      <span className={`sort-arrow${active ? " active" : ""}`} aria-hidden="true">
+                        {active && sort.dir === "desc" ? "▼" : "▲"}
+                      </span>
+                    </button>
+                  </th>
+                  {c.key === "email" && <th className="plain">Notes</th>}
+                </Fragment>
               );
             })}
             {!readOnly && <th className="plain">Rider link</th>}
@@ -127,20 +133,24 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                         ↻
                       </span>
                     )}
+                  </td>
+                  <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
+                  <td className="email" data-label="Email">
+                    {r.rider_email ? <EmailBreak email={r.rider_email} /> : <span className="muted">—</span>}
+                  </td>
+                  <td className={`notes-cell${r.notes ? "" : " empty"}`} data-label="Notes">
                     {r.notes && (
                       <button
                         className="notes-toggle"
                         onClick={() => toggleNotes(r.id)}
                         aria-expanded={notesOpen}
                         aria-controls={`notes-${r.id}`}
+                        aria-label={notesOpen ? "Hide notes" : "Show notes"}
+                        title={notesOpen ? "Hide notes" : "Show notes"}
                       >
-                        Notes <span aria-hidden="true">{notesOpen ? "▴" : "▾"}</span>
+                        <span aria-hidden="true">{notesOpen ? "▴" : "▾"}</span>
                       </button>
                     )}
-                  </td>
-                  <td className="nowrap" data-label="Phone">{formatPhone(r.rider_phone)}</td>
-                  <td className="email" data-label="Email">
-                    {r.rider_email ? <EmailBreak email={r.rider_email} /> : <span className="muted">—</span>}
                   </td>
                   <td data-label="From">{r.pickup_name}</td>
                   <td data-label="To">{r.dropoff_name}</td>

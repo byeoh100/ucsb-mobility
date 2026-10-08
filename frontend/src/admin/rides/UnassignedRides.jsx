@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import RideTable from "./RideTable.jsx";
 
-// "Unassigned rides (n) ▾" bar above the main list. Opens on its own when
-// there are any; can be collapsed; does nothing when there are none.
+// "Unassigned rides (n) ▾" bar above the main list, joined to its table as one
+// box. Opens on its own when there are any; can be collapsed; does nothing
+// when there are none.
 export default function UnassignedRides({ rides, ...tableProps }) {
   const count = rides.length;
   const [open, setOpen] = useState(count > 0);
@@ -17,7 +18,7 @@ export default function UnassignedRides({ rides, ...tableProps }) {
   const expanded = open && count > 0;
 
   return (
-    <section className={`unassigned${count > 0 ? " has-rides" : ""}`}>
+    <section className={`unassigned${count > 0 ? " has-rides" : ""}${expanded ? " open" : ""}`}>
       <button
         className="unassigned-bar"
         onClick={() => setOpen(!open)}
