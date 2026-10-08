@@ -175,6 +175,18 @@ dialog.modal {
 .modal::backdrop { background: rgba(0, 54, 96, 0.5); }
 .modal-title { font-size: 1.25rem; margin: 0 0 1.25rem; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+/* QuickConfirm: question on top, ✓ / ✕ halves as the bottom edge */
+dialog.modal.quick-confirm { padding: 0; overflow: hidden; width: min(340px, calc(100vw - 2rem)); }
+.quick-confirm .modal-title { margin: 0; padding: 2.25rem 1.25rem; text-align: center; font-size: 1.6rem; }
+.quick-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; }
+.quick-yes, .quick-no {
+  display: grid; place-items: center; min-height: 4.25rem; border: 0; padding: 0;
+  color: var(--white); font: inherit; font-size: 1.9rem; font-weight: 800; text-decoration: none; cursor: pointer;
+}
+.quick-yes { background: var(--success); }
+.quick-no { background: var(--danger); }
+.quick-yes:hover, .quick-no:hover { filter: brightness(0.92); }
+.quick-yes:focus-visible, .quick-no:focus-visible { outline: 3px solid var(--highlight); outline-offset: -3px; }
 
 /* Form bits */
 .hint { font-weight: 400; font-size: 0.85rem; color: var(--muted); margin: 0; }
@@ -360,7 +372,11 @@ select {
   border: 1px solid var(--border); border-radius: 12px; padding: 1rem;
   display: flex; flex-direction: column; gap: 0.75rem; background: var(--surface);
 }
-.ride-card-current { border: 2px solid var(--success); overflow: hidden; }
+.ride-card-current { border: 3px solid var(--success); overflow: hidden; }
+/* Head: time, badge and name on the left; ✕ over 📞 on the right */
+.ride-card-head { display: flex; align-items: flex-start; gap: 0.75rem; }
+.ride-card-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.ride-card-head-actions { display: flex; flex-direction: column; gap: 0.5rem; }
 
 /* Current ride(s): one tab per passenger when riders share the cart */
 .current-rides { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -387,7 +403,7 @@ select {
 .rider-badge-no { color: var(--danger); background: #FBEAE7; box-shadow: inset 0 0 0 1px #F2C4BC; }
 /* ✕: take the ride back out of Current */
 .remove-current {
-  margin-left: auto; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 50%;
+  width: 2.4rem; height: 2.4rem; flex: none; border-radius: 50%;
   border: 1px solid var(--border); background: var(--surface); color: var(--muted);
   font: inherit; font-size: 1rem; font-weight: 700; line-height: 1; cursor: pointer;
 }
@@ -395,7 +411,7 @@ select {
 /* Round phone button: the one tappable thing on the rider's line */
 .call-circle {
   display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; flex: none; border-radius: 50%;
-  background: var(--accent); color: var(--white);
+  background: var(--accent); color: var(--white); border: 0; padding: 0; cursor: pointer;
 }
 .call-circle svg { width: 1.15rem; height: 1.15rem; fill: currentColor; }
 .call-circle:hover { background: var(--ucsb-navy); }
@@ -435,8 +451,7 @@ select {
 .ride-row-name { font-weight: 600; display: flex; align-items: center; gap: 0.1rem; }
 .ride-row-name .swatch-small { margin-right: 0.4rem; }
 .ride-row-route { font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.done-rides summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 0.4rem 0; }
-.done-rides .ride-list { margin-top: 0.5rem; }
+.done-rides summary { cursor: pointer; }
 
 /* Campus map */
 .campus-map { margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -662,11 +677,16 @@ select {
 .day-switch.date-stepper .stepper-button:disabled { color: var(--border); cursor: default; background: none; }
 .day-switch-label { flex: 1; text-align: center; align-self: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0.5rem; color: var(--accent); }
 .ride-card-time, .ride-row-time { color: var(--accent); }
+/* Done: one gray box, finished rides joined underneath its header */
+.done-rides { background: var(--ucsb-gray-light); border: 1px solid #C5CDD3; border-radius: var(--radius); overflow: hidden; }
 .done-rides summary {
   list-style: none; display: flex; justify-content: space-between; align-items: center;
-  padding: 0.6rem 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--accent); font-weight: 700;
+  padding: 0.65rem 0.8rem; color: var(--accent); font-weight: 700;
 }
+.done-rides .ride-list { margin: 0; gap: 0; border-top: 1px solid #C5CDD3; }
+.done-rides .ride-row { background: transparent; border: 0; border-radius: 0; }
+.done-rides .ride-row + .ride-row { border-top: 1px solid #C5CDD3; }
+.done-rides .ride-row-details { border-top: 1px dashed #C5CDD3; }
 .done-rides summary::-webkit-details-marker { display: none; }
 .done-rides summary::after { content: "▾"; color: var(--muted); transition: transform 0.15s; }
 .done-rides[open] summary::after { transform: rotate(180deg); }

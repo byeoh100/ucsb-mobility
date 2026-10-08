@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ridesApi } from "../api.js";
 import CampusMap, { LocationDot } from "../components/CampusMap.jsx";
+import QuickConfirm from "../components/QuickConfirm.jsx";
 import { formatPhone } from "../lib/phone.js";
 import { formatTime } from "../lib/time.js";
 
@@ -17,28 +18,40 @@ import { formatTime } from "../lib/time.js";
 export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const run = useAction(ride, onChanged, setBusy, setError);
 
   return (
     <article className="ride-card ride-card-current">
-      <div className="ride-card-top">
-        <span className="ride-card-time">{formatTime(ride.pickup_time, timeZone)}</span>
-        <RiderConfirmed confirmed={ride.rider_confirmed} />
-        <button
-          className="remove-current"
-          onClick={() => run(ridesApi.unstart)}
-          disabled={busy}
-          aria-label={`Remove ${ride.rider_name} from current rides`}
-          title="Remove from current rides"
-        >
-          ✕
-        </button>
+      <div className="ride-card-head">
+        <div className="ride-card-head-main">
+          <div className="ride-card-top">
+            <span className="ride-card-time">{formatTime(ride.pickup_time, timeZone)}</span>
+            <RiderConfirmed confirmed={ride.rider_confirmed} />
+          </div>
+          <span className="ride-card-name">{ride.rider_name}</span>
+        </div>
+        {/* ✕ over 📞, both asking first since they're close together */}
+        <div className="ride-card-head-actions">
+          <button
+            className="remove-current"
+            onClick={() => setConfirmRemove(true)}
+            disabled={busy}
+            aria-label={`Remove ${ride.rider_name} from current rides`}
+            title="Remove from current rides"
+          >
+            ✕
+          </button>
+          <CallButton ride={ride} />
+        </div>
       </div>
-
-      <div className="ride-card-rider">
-        <span className="ride-card-name">{ride.rider_name}</span>
-        <CallButton ride={ride} />
-      </div>
+      <QuickConfirm
+        open={confirmRemove}
+        onClose={() => setConfirmRemove(false)}
+        title="Remove?"
+        yesLabel={`Yes, remove ${ride.rider_name} from current rides`}
+        onConfirm={() => run(ridesApi.unstart)}
+      />
 
       <RouteLine ride={ride} />
 
@@ -89,19 +102,33 @@ export function RiderConfirmed({ confirmed }) {
   );
 }
 
-// Round phone button: the only tappable thing on the rider's line.
+// "8055550123" → "805-555-0123"
+const dashed = (phone) => `${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`;
+
+// Round phone button. Asks "Call 805-555-0123?" first.
 export function CallButton({ ride }) {
+  const [asking, setAsking] = useState(false);
   return (
-    <a
-      className="call-circle"
-      href={`tel:+1${ride.rider_phone}`}
-      aria-label={`Call ${ride.rider_name}, ${formatPhone(ride.rider_phone)}`}
-      title={`Call ${formatPhone(ride.rider_phone)}`}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z" />
-      </svg>
-    </a>
+    <>
+      <button
+        type="button"
+        className="call-circle"
+        onClick={() => setAsking(true)}
+        aria-label={`Call ${ride.rider_name}, ${formatPhone(ride.rider_phone)}`}
+        title={`Call ${formatPhone(ride.rider_phone)}`}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1L6.6 10.8z" />
+        </svg>
+      </button>
+      <QuickConfirm
+        open={asking}
+        onClose={() => setAsking(false)}
+        title={`Call ${dashed(ride.rider_phone)}?`}
+        yesLabel={`Yes, call ${ride.rider_name}`}
+        confirmHref={`tel:+1${ride.rider_phone}`}
+      />
+    </>
   );
 }
 

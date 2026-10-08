@@ -3,8 +3,8 @@ import { useEffect, useId, useRef } from "react";
 // Centered dialog built on the native <dialog> element, which handles focus
 // trapping, Escape to close, and the backdrop. Reused by forms and confirmations.
 //
-// Props: open, onClose, title, children, wide (for bigger forms)
-export default function Modal({ open, onClose, title, children, wide = false }) {
+// Props: open, onClose, title, children, wide (for bigger forms), className (extra styling)
+export default function Modal({ open, onClose, title, children, wide = false, className = "" }) {
   const dialog = useRef(null);
   const titleId = useId();
 
@@ -17,7 +17,7 @@ export default function Modal({ open, onClose, title, children, wide = false }) 
   return (
     <dialog
       ref={dialog}
-      className={wide ? "modal modal-wide" : "modal"}
+      className={["modal", wide && "modal-wide", className].filter(Boolean).join(" ")}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault(); // let the parent decide (it owns `open`)
