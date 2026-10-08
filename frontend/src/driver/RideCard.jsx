@@ -30,6 +30,7 @@ export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
             <RiderConfirmed confirmed={ride.rider_confirmed} />
           </div>
           <span className="ride-card-name">{ride.rider_name}</span>
+          <RouteLine ride={ride} />
         </div>
         {/* ✕ over 📞, both asking first since they're close together */}
         <div className="ride-card-head-actions">
@@ -52,8 +53,6 @@ export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
         yesLabel={`Yes, remove ${ride.rider_name} from current rides`}
         onConfirm={() => run(ridesApi.unstart)}
       />
-
-      <RouteLine ride={ride} />
 
       {sharing && <SharingStatus state={sharing} />}
 
