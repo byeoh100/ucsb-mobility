@@ -157,7 +157,9 @@ export default function DriverHome() {
               </section>
             )}
             {next && (
-              <div className="start-next">
+              // With a rider on board, "Add next ride" is outlined and set off by a
+              // divider, so it doesn't compete with that rider's Mark complete.
+              <div className={`start-next${current.length > 0 ? " start-next-add" : ""}`}>
                 <button className="button otw-button" onClick={startNext} disabled={starting}>
                   {starting ? "Starting…" : current.length > 0 ? "Add next ride" : "Start next ride"}
                 </button>

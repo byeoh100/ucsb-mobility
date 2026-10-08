@@ -392,6 +392,9 @@ select {
   margin: 0; padding: 0.9rem 1rem; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center;
 }
 .start-next { display: flex; flex-direction: column; gap: 0.35rem; align-items: stretch; text-align: center; }
+.start-next-add { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; }
+.start-next-add .otw-button { background: var(--surface); color: var(--success); border: 2px solid var(--success); }
+.start-next-add .otw-button:hover { background: var(--selected-bg); }
 .ride-card-top { display: flex; align-items: center; gap: 0.6rem; }
 .ride-card-time { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ride-card-rider { display: flex; align-items: center; gap: 0.6rem; }
@@ -513,7 +516,10 @@ select {
 .rider-time { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .rider-route { font-size: 1.1rem; font-weight: 600; }
 /* Time and route on the left, live status on the right */
-.rider-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+.rider-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; align-items: stretch; }
+/* The status box spans from "Today" down to the drop-off line; the button sits at its bottom. */
+.rider-top .live-status { justify-content: space-between; }
+.rider-top .live-status .thumbs-up, .rider-top .live-status .confirmed-badge { margin-top: auto; }
 .rider-top .rider-time { font-size: 1.9rem; }
 .rider-top .rider-route div { grid-template-columns: 1fr; }
 .rider-top .rider-route dd { font-size: 1rem; }
