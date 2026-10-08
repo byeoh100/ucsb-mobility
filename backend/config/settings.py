@@ -23,6 +23,10 @@ them in backend/.env (copy .env.example); in production, set them on the host.
   TIME_ZONE                   campus time zone (default America/Los_Angeles)
   DJANGO_ALLOWED_HOSTS        extra hostnames, comma-separated (custom domains)
   DJANGO_CSRF_TRUSTED_ORIGINS extra origins, comma-separated, with https://
+  TRUSTED_PROXY_COUNT         proxies in front of the app, for per-visitor rate
+                              limits (default 1 on Render, 0 locally)
+  DJANGO_SUPERUSER_USERNAME,  start.sh creates this developer account for
+  _EMAIL, _PASSWORD           /django-admin/ if it doesn't exist yet
 """
 
 import os
