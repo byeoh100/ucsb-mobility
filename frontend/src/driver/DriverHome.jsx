@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { ridesApi } from "../api.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -27,6 +27,10 @@ export default function DriverHome() {
     const next = { date, view, ...changes };
     setParams({ ...(next.date !== today && { date: next.date }), ...(next.view === "all" && { view: "all" }) });
   };
+
+  // Which way to slide when switching My/All rides or the day: toward "All" or
+  // a later day comes in from the right; back comes in from the left.
+  const slide = useSlideDirection(view, date);
 
   const [rides, setRides] = useState(null);
   const [error, setError] = useState("");
@@ -120,7 +124,9 @@ export default function DriverHome() {
       actions={<button className="button-quiet" onClick={signOut}>Sign out</button>}
     >
       <div className="stack driver-home">
-        <div className="segmented" role="tablist" aria-label="Which rides">
+        <div className="segmented sliding" role="tablist" aria-label="Which rides">
+          {/* The highlight slides between the two tabs */}
+          <span className={`segmented-thumb${view === "all" ? " at-end" : ""}`} aria-hidden="true" />
           <button role="tab" aria-selected={view === "mine"} disabled={!myId} onClick={() => update({ view: "mine" })}>
             My rides
           </button>
@@ -132,7 +138,9 @@ export default function DriverHome() {
         <div className="day-switch date-stepper">
           <button className="stepper-button" onClick={() => update({ date: shiftDate(date, -1) })} disabled={isToday} aria-label="Previous day">‹</button>
           <span className="day-switch-label">
-            {isToday ? "Today" : date === shiftDate(today, 1) ? "Tomorrow" : formatDayLabel(date)}
+            <span key={date} className={`slide-${slide}`}>
+              {isToday ? "Today" : date === shiftDate(today, 1) ? "Tomorrow" : formatDayLabel(date)}
+            </span>
           </span>
           <button className="stepper-button" onClick={() => update({ date: shiftDate(date, 1) })} aria-label="Next day">›</button>
         </div>
@@ -144,68 +152,87 @@ export default function DriverHome() {
         )}
         {rides === null && !error && <p className="muted">Loading rides…</p>}
 
-        {rides && view === "mine" && (
-          <>
-            {isToday && mine.length > 0 && (
-              <section className="stack">
-                <h2 className="section-title">{current.length > 1 ? `Current rides (${current.length})` : "Current ride"}</h2>
-                {current.length > 0 ? (
-                  <CurrentRides rides={current} cardProps={cardProps} you={you} sharing={sharing} />
-                ) : (
-                  <p className="current-empty muted">No current ride.</p>
-                )}
-              </section>
-            )}
-            {next && (
-              // With a rider on board, "Add next ride" is outlined and set off by a
-              // divider, so it doesn't compete with that rider's Mark complete.
-              <div className={`start-next${current.length > 0 ? " start-next-add" : ""}`}>
-                <button className="button otw-button" onClick={startNext} disabled={starting}>
-                  {starting ? "Starting…" : current.length > 0 ? "Add next ride" : "Start next ride"}
-                </button>
-                <span className="hint">
-                  {formatTime(next.pickup_time, timeZone)} · {next.rider_name} · {next.pickup_name}
-                </span>
-                {startError && <p className="error" role="alert">{startError}</p>}
-              </div>
-            )}
-            {upcoming.length > 0 && (
-              <section className="stack">
-                <h2 className="section-title">Your rides</h2>
-                {isToday && <p className="hint">Tap a ride for its map and notes, or to pick it up out of order.</p>}
-                <ul className="ride-list">{upcoming.map((r) => row(r, false))}</ul>
-              </section>
-            )}
-            {mine.length === 0 && (
-              <div className="empty-state">
-                <p>No rides assigned to you {isToday ? "today" : "this day"}.</p>
-                <p className="muted">Check All rides to see who's driving what.</p>
-              </div>
-            )}
-            {mine.length > 0 && current.length === 0 && upcoming.length === 0 && (
-              <p className="muted">You're done for {isToday ? "today" : "this day"}.</p>
-            )}
-            {done.length > 0 && (
-              <details className="done-rides">
-                <summary>Done ({done.length})</summary>
-                <ul className="ride-list">{done.map((r) => row(r, false))}</ul>
-              </details>
-            )}
-          </>
-        )}
+        {/* Keyed by view and day, so switching either slides the list in. */}
+        {rides && (
+          <div key={`${view}-${date}`} className={`stack slide-${slide}`}>
+          {view === "mine" && (
+            <>
+              {isToday && mine.length > 0 && (
+                <section className="stack">
+                  <h2 className="section-title">{current.length > 1 ? `Current rides (${current.length})` : "Current ride"}</h2>
+                  {current.length > 0 ? (
+                    <CurrentRides rides={current} cardProps={cardProps} you={you} sharing={sharing} />
+                  ) : (
+                    <p className="current-empty muted">No current ride.</p>
+                  )}
+                </section>
+              )}
+              {next && (
+                // With a rider on board, "Add next ride" is outlined and set off by a
+                // divider, so it doesn't compete with that rider's Mark complete.
+                <div className={`start-next${current.length > 0 ? " start-next-add" : ""}`}>
+                  <button className="button otw-button" onClick={startNext} disabled={starting}>
+                    {starting ? "Starting…" : current.length > 0 ? "Add next ride" : "Start next ride"}
+                  </button>
+                  <span className="hint">
+                    {formatTime(next.pickup_time, timeZone)} · {next.rider_name} · {next.pickup_name}
+                  </span>
+                  {startError && <p className="error" role="alert">{startError}</p>}
+                </div>
+              )}
+              {upcoming.length > 0 && (
+                <section className="stack">
+                  <h2 className="section-title">Your rides</h2>
+                  {isToday && <p className="hint">Tap a ride for its map and notes, or to pick it up out of order.</p>}
+                  <ul className="ride-list">{upcoming.map((r) => row(r, false))}</ul>
+                </section>
+              )}
+              {mine.length === 0 && (
+                <div className="empty-state">
+                  <p>No rides assigned to you {isToday ? "today" : "this day"}.</p>
+                  <p className="muted">Check All rides to see who's driving what.</p>
+                </div>
+              )}
+              {mine.length > 0 && current.length === 0 && upcoming.length === 0 && (
+                <p className="muted">You're done for {isToday ? "today" : "this day"}.</p>
+              )}
+              {done.length > 0 && (
+                <>
+                  <hr className="list-divider" />
+                  <details className="done-rides">
+                    <summary>Done ({done.length})</summary>
+                    <ul className="ride-list">{done.map((r) => row(r, false))}</ul>
+                  </details>
+                </>
+              )}
+            </>
+          )}
 
-        {rides && view === "all" && (
-          <>
-            {rides.length === 0 ? (
-              <div className="empty-state">
-                <p>No rides {isToday ? "today" : "this day"}.</p>
-              </div>
-            ) : (
-              <ul className="ride-list">{rides.map((r) => row(r, true))}</ul>
-            )}
-          </>
+          {view === "all" && (
+            <>
+              {rides.length === 0 ? (
+                <div className="empty-state">
+                  <p>No rides {isToday ? "today" : "this day"}.</p>
+                </div>
+              ) : (
+                <ul className="ride-list">{rides.map((r) => row(r, true))}</ul>
+              )}
+            </>
+          )}
+          </div>
         )}
       </div>
     </MobileLayout>
   );
+}
+
+// "right" | "left" | "none": the direction of the last My/All or day switch.
+// Remembered (not reset) so the list slides in that way once it has loaded.
+function useSlideDirection(view, date) {
+  const previous = useRef({ view, date });
+  const direction = useRef("none");
+  if (view !== previous.current.view) direction.current = view === "all" ? "right" : "left";
+  else if (date !== previous.current.date) direction.current = date > previous.current.date ? "right" : "left";
+  previous.current = { view, date };
+  return direction.current;
 }

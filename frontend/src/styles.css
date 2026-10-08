@@ -749,3 +749,40 @@ select {
 .req { color: var(--danger); font-weight: 700; margin-left: 0.15rem; }
 .required-note { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
+
+/* ---------- Mobile motion (driver and rider pages) ---------- */
+/* My rides / All rides: the highlight slides between the tabs */
+.segmented.sliding { position: relative; }
+.segmented-thumb {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+  border-radius: 6px; background: var(--accent);
+  transition: transform 0.28s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+.segmented-thumb.at-end { transform: translateX(100%); }
+.segmented.sliding button { position: relative; z-index: 1; transition: color 0.2s; }
+.segmented.sliding button[aria-selected="true"] { background: transparent; color: var(--white); }
+
+/* Lists and the day label slide in from the side they came from */
+@keyframes slide-from-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes slide-from-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.slide-right { animation: slide-from-right 0.26s ease-out; }
+.slide-left { animation: slide-from-left 0.26s ease-out; }
+.day-switch-label { overflow: hidden; }
+.day-switch-label > span { display: inline-block; }
+
+/* Buttons grow a little while pressed */
+.mobile-column :is(button, .button, .button-quiet, a.call-circle):not(:disabled) {
+  transition: transform 0.12s ease-out;
+}
+.mobile-column :is(button, .button, .button-quiet, a.call-circle):not(:disabled):active { transform: scale(1.05); }
+.mobile-column .mark-complete-bar:not(:disabled):active,
+.mobile-column .ride-row-summary:active { transform: scale(1.015); } /* full-width: a smaller grow */
+
+/* Divider between upcoming rides and Done */
+.list-divider { border: 0; border-top: 1px solid var(--border); margin: 0.25rem 0; width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented-thumb, .mobile-column :is(button, .button, .button-quiet, a.call-circle) { transition: none; }
+  .slide-right, .slide-left { animation: none; }
+  .mobile-column :is(button, .button, .button-quiet, a.call-circle):active { transform: none; }
+}
