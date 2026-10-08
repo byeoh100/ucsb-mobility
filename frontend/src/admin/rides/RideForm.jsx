@@ -4,6 +4,7 @@ import PhoneInput from "../../components/PhoneInput.jsx";
 import TimeSelect from "../../components/TimeSelect.jsx";
 import RepeatFields, { repeatDates, repeatProblem, weekdayOf } from "./RepeatFields.jsx";
 import { shiftDate } from "../../lib/time.js";
+import { onShift } from "../../lib/shifts.js";
 import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -58,6 +59,8 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
 
   const timeChanged = !isEdit || date !== original.date || time !== original.time;
   const selectedDriver = drivers.find((d) => String(d.id) === String(driverId));
+  const onShiftDrivers = drivers.filter((d) => onShift(d, date, time));
+  const otherDrivers = drivers.filter((d) => !onShiftDrivers.includes(d));
 
   // Editing a field clears its error (and any form-level error).
   function edit(field, setter) {
@@ -238,9 +241,26 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
             />
             <select value={driverId} onChange={(e) => edit("driver", setDriverId)(e.target.value)}>
               <option value="">Unassigned</option>
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
+              {/* Drivers on shift at this ride's time come first. Only a guide:
+                  anyone can be picked (extra hours, standby). */}
+              {onShiftDrivers.length > 0 ? (
+                <>
+                  <optgroup label="On shift">
+                    {onShiftDrivers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name} · on shift</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Everyone else">
+                    {otherDrivers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </optgroup>
+                </>
+              ) : (
+                drivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))
+              )}
             </select>
           </span>
           {error("driver")}

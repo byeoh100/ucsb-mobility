@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { formatPhone } from "../../lib/phone.js";
-import { formatTime } from "../../lib/time.js";
+import { onShift } from "../../lib/shifts.js";
+import { campusParts, formatTime } from "../../lib/time.js";
 
 export const STATUS_LABELS = {
   not_confirmed: "Not started", // the driver hasn't set off yet (not about the rider)
@@ -56,7 +57,15 @@ export function sortRides(rides, { key, dir }, readOnly = false) {
 //   sort       { key, dir } and onSort(nextSort), shared so both tables sort alike
 //   onEdit     (ride) => void   (deleting happens from the edit dialog)
 //   readOnly   archive mode: no link or Edit columns; "Driver started" replaces Status
-export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readOnly = false }) {
+//   drivers    optional [{ id, shifts }]: marks rides outside their driver's shifts
+export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readOnly = false, drivers = [] }) {
+  const driverById = Object.fromEntries(drivers.map((d) => [d.id, d]));
+  // false only when the driver has shifts and this ride falls outside them.
+  const offShift = (r) => {
+    if (!r.driver || readOnly) return false;
+    const { date, time } = campusParts(r.pickup_time, timeZone);
+    return onShift(driverById[r.driver], date, time) === false;
+  };
   const columns = columnsFor(readOnly);
   const sorted = sortRides(rides, sort, readOnly);
   const columnCount = columns.length + 1 + (readOnly ? 0 : 2); // +1: Notes
@@ -159,6 +168,9 @@ export default function RideTable({ rides, timeZone, sort, onSort, onEdit, readO
                       <>
                         <span className="swatch swatch-small" style={{ background: r.driver_color }} aria-hidden="true" />
                         {r.driver_name}
+                        {offShift(r) && (
+                          <span className="off-shift" title="Outside this driver's usual shifts">off shift</span>
+                        )}
                       </>
                     ) : (
                       <span className="muted">Unassigned</span>

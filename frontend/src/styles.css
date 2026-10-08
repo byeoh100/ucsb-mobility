@@ -669,6 +669,11 @@ select {
   }
   .table td.col-actions { width: auto; justify-content: flex-end; padding-top: 0.4rem; }
   .unassigned.open .table-wrap { padding-top: 0.6rem; }
+  /* Shift timelines keep their own layout inside the phone cards */
+  .table tbody tr.has-shifts { margin-bottom: 0; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
+  .table tbody tr.shift-row { border-top: 1px dashed var(--border); border-radius: 0 0 var(--radius) var(--radius); padding-top: 0.6rem; }
+  .table tr.has-shifts + .shift-row td { border-top: 0; }
+  .table td.shift-row-cell, .shift-row td { display: block; padding: 0; }
   .ride-table td.email { overflow-wrap: anywhere; }
   .ride-table td.notes-cell.empty { display: none; } /* no notes: no empty "Notes" line on the card */
   /* An open notes row joins the card above it. */
@@ -786,3 +791,128 @@ select {
   .slide-right, .slide-left { animation: none; }
   .mobile-column :is(button, .button, .button-quiet, a.call-circle):active { transform: none; }
 }
+
+/* ---------- Driver shifts (Drivers page → Show shifts) ---------- */
+:root {
+  /* One color per weekday; all pass AA with white text. */
+  --day-0: #1F5FA6; /* Mon */
+  --day-1: #0B7A6F; /* Tue */
+  --day-2: #7A5BA8; /* Wed */
+  --day-3: #B5531C; /* Thu */
+  --day-4: #A3365A; /* Fri */
+}
+.day-0 { background: var(--day-0); } .day-1 { background: var(--day-1); } .day-2 { background: var(--day-2); }
+.day-3 { background: var(--day-3); } .day-4 { background: var(--day-4); }
+
+.table tr.has-shifts td { border-bottom: 0; }
+.shift-row td { padding: 0.75rem 0.9rem 1rem; }
+/* Divider between the driver's details and their shifts */
+.table tr.has-shifts + .shift-row td { border-top: 1px dashed var(--border); }
+
+.driver-shifts { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* Timeline: day labels, then a white lane per day */
+.shift-timeline { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); }
+.shift-day { align-self: center; font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+.shift-lane {
+  position: relative; height: 1.75rem; background-color: var(--white);
+  border: 1px solid var(--border); border-top: 0;
+}
+.shift-lane:first-of-type { border-top: 1px solid var(--border); }
+/* Lines inside the lanes: solid every hour, dotted every half hour */
+.grid-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid #E2E6EA; pointer-events: none; }
+.grid-line.half { border-left: 1px dotted #C9D0D6; }
+.shift-block {
+  position: absolute; top: 3px; bottom: 3px; padding: 0 4px; border: 0; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  color: var(--white); font: inherit; font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+}
+.shift-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+/* Edit shifts on: a shift shows its outline and grab handles when pointed
+   at or clicked (any shift can be dragged either way) */
+.shift-timeline.editing .shift-lane { cursor: context-menu; }
+.shift-timeline.editing .shift-block { cursor: grab; touch-action: none; user-select: none; padding: 0 12px; }
+.shift-timeline.editing .shift-block:hover { box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--highlight); }
+.shift-timeline.editing .shift-block:active { cursor: grabbing; }
+.shift-block:focus-visible { outline: none; }
+/* The highlighted (clicked) shift stands out more */
+.shift-timeline.editing .shift-block.selected {
+  z-index: 1; box-shadow: 0 0 0 2px var(--white), 0 0 0 5px var(--highlight), 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.shift-handle { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; touch-action: none; opacity: 0; transition: opacity 0.12s; }
+.shift-block:hover .shift-handle, .shift-block.selected .shift-handle, .shift-block:focus-visible .shift-handle { opacity: 1; }
+.shift-handle.start { left: 0; }
+.shift-handle.end { right: 0; }
+.shift-handle::after {
+  content: ""; position: absolute; top: 22%; bottom: 22%; left: 50%; width: 3px; transform: translateX(-50%);
+  border-radius: 2px; background: rgba(255, 255, 255, 0.85);
+}
+.shift-status { min-height: 1.2em; }
+/* Right-click (or press-and-hold) menu */
+.shift-menu {
+  position: fixed; z-index: 50; min-width: 9rem; padding: 0.3rem; transform: translate(2px, 2px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.shift-menu button {
+  display: block; width: 100%; padding: 0.5rem 0.7rem; border: 0; border-radius: 6px; background: none;
+  color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.shift-menu button:hover, .shift-menu button:focus-visible { background: var(--bg); outline: none; }
+.shift-menu button.danger { color: var(--danger); }
+
+/* Edit shifts switch */
+.switch { position: relative; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track {
+  position: relative; width: 2.5rem; height: 1.4rem; flex: none; border-radius: 999px;
+  background: var(--ucsb-gray-light); transition: background 0.2s;
+}
+.switch-track::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.4rem - 4px); height: calc(1.4rem - 4px);
+  border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: transform 0.2s;
+}
+.switch input:checked + .switch-track { background: var(--success); }
+.switch input:checked + .switch-track::after { transform: translateX(1.1rem); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+/* Rides table: small tag when a ride is outside its driver's shifts */
+.off-shift {
+  margin-left: 0.4rem; padding: 0 0.35rem; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 0.66rem; font-weight: 700; color: var(--muted); white-space: nowrap; vertical-align: 0.1em;
+}
+
+/* Show shifts + the Edit shifts switch that slides out of it */
+.shift-controls {
+  display: inline-flex; align-items: stretch; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  transition: border-color 0.2s;
+}
+.shift-controls.on { border-color: var(--accent); }
+.shift-toggle {
+  padding: 0.4rem 0.85rem; border: 0; background: var(--surface); color: var(--accent);
+  font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.shift-controls.on .shift-toggle { background: var(--accent); color: var(--white); }
+.shift-toggle:focus-visible { outline: 2px solid var(--highlight); outline-offset: -2px; }
+.shift-edit-slide { display: grid; grid-template-columns: 0fr; transition: grid-template-columns 0.3s ease; }
+.shift-controls.on .shift-edit-slide { grid-template-columns: 1fr; }
+.shift-edit-slide .switch { min-width: 0; overflow: hidden; padding: 0; transition: padding 0.3s ease; }
+.shift-controls.on .shift-edit-slide .switch { padding: 0 0.85rem; }
+@media (prefers-reduced-motion: reduce) {
+  .shift-edit-slide, .shift-edit-slide .switch, .shift-toggle { transition: none; }
+}
+@media (max-width: 760px) {
+  .shift-controls { align-self: stretch; }
+  .shift-toggle { flex: 1; padding: 0.6rem 0.85rem; }
+}
+
+/* Phones: bigger shifts, easier to read and grab */
+@media (max-width: 760px) {
+  .shift-lane { height: 2.4rem; }
+  .shift-block { top: 4px; bottom: 4px; font-size: 0.8rem; }
+  .shift-timeline.editing .shift-block { padding: 0 14px; }
+  .shift-handle { width: 14px; }
+}
+.table tbody tr.shift-row:hover { background: none; } /* no hover tint while dragging shifts */

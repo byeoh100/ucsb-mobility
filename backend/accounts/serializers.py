@@ -3,7 +3,9 @@ from rest_framework import serializers
 
 from common.phone import normalize_phone
 
-from .models import DRIVER_COLORS, AdminEmail, Driver
+from common import service_hours
+
+from .models import DRIVER_COLORS, AdminEmail, Driver, DriverShift
 from .validators import normalize_email, validate_list_email
 
 
@@ -25,10 +27,15 @@ class DriverSerializer(serializers.ModelSerializer):
     # riders can share the cart.
     current_rides = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
+    # Usual weekly shifts (read here; changed through /api/drivers/<id>/shifts/).
+    shifts = serializers.SerializerMethodField()
 
     class Meta:
         model = Driver
-        fields = ["id", "email", "name", "phone", "color", "current_rides", "location"]
+        fields = ["id", "email", "name", "phone", "color", "current_rides", "location", "shifts"]
+
+    def get_shifts(self, driver):
+        return ShiftSerializer(driver.shifts.all(), many=True).data
 
     def get_current_rides(self, driver):
         from rides.tracking import current_rides
@@ -110,3 +117,44 @@ class DispatcherSerializer(serializers.ModelSerializer):
         if Driver.objects.filter(email=email).exists():
             raise serializers.ValidationError("This email is a driver. Remove them from Drivers first.")
         return email
+
+
+STEP_MINUTES = 15  # shifts start and end on the quarter hour
+
+
+class ShiftSerializer(serializers.ModelSerializer):
+    start = serializers.TimeField(format="%H:%M", input_formats=["%H:%M", "%H:%M:%S"])
+    end = serializers.TimeField(format="%H:%M", input_formats=["%H:%M", "%H:%M:%S"])
+
+    class Meta:
+        model = DriverShift
+        fields = ["weekday", "start", "end"]
+
+    def validate(self, attrs):
+        start, end = attrs["start"], attrs["end"]
+        for t in (start, end):
+            if t.minute % STEP_MINUTES or t.second:
+                raise serializers.ValidationError("Shifts start and end on the quarter hour.")
+        if start >= end:
+            raise serializers.ValidationError("A shift has to end after it starts.")
+        if start < service_hours.start() or end > service_hours.end():
+            raise serializers.ValidationError(
+                f"Shifts must be within hours of operation ({service_hours.label(service_hours.start())} "
+                f"to {service_hours.label(service_hours.end())})."
+            )
+        return attrs
+
+
+class ShiftListSerializer(serializers.Serializer):
+    """A driver's whole week at once: [{weekday, start, end}, ...]."""
+
+    shifts = ShiftSerializer(many=True)
+
+    def validate_shifts(self, shifts):
+        by_day = {}
+        for shift in sorted(shifts, key=lambda s: (s["weekday"], s["start"])):
+            previous = by_day.get(shift["weekday"])
+            if previous and shift["start"] < previous["end"]:
+                raise serializers.ValidationError("Shifts on the same day can't overlap.")
+            by_day[shift["weekday"]] = shift
+        return shifts

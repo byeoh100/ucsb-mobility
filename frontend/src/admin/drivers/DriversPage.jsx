@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toMinutes } from "../../lib/shifts.js";
 import { driversApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
@@ -15,6 +16,23 @@ export default function DriversPage() {
   // null = form closed, { driver: null } = adding, { driver } = editing
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null); // driver pending removal
+  const [showShifts, setShowShifts] = useState(false);
+  const [editShifts, setEditShifts] = useState(false);
+  // The one highlighted shift on the page ({ driverId, key }), if any.
+  const [selectedShift, setSelectedShift] = useState(null);
+
+  // Clicking anywhere that isn't a shift clears the highlight. (A click on a
+  // shift highlights that one instead; the timeline handles it.)
+  useEffect(() => {
+    if (!editShifts) {
+      setSelectedShift(null);
+      return;
+    }
+    const clear = (e) => !e.target.closest?.(".shift-block") && setSelectedShift(null);
+    document.addEventListener("pointerdown", clear);
+    return () => document.removeEventListener("pointerdown", clear);
+  }, [editShifts]);
+  const hours = config.service_hours ?? { start: "07:00", end: "19:00" };
 
   const load = useCallback(async () => {
     try {
@@ -47,14 +65,44 @@ export default function DriversPage() {
         <h1>
           Drivers {drivers && <span className="count">{drivers.length}</span>}
         </h1>
-        <button
-          className="button"
-          onClick={() => setEditing({ driver: null })}
-          disabled={!drivers || allColorsTaken}
-          title={allColorsTaken ? `All ${colors.length} colors are in use` : undefined}
-        >
-          + Add driver
-        </button>
+        <div className="page-actions">
+          {/* Show shifts fills in while on, and the Edit shifts switch slides out of it. */}
+          <div className={`shift-controls${showShifts ? " on" : ""}`}>
+            <button
+              type="button"
+              className="shift-toggle"
+              aria-pressed={showShifts}
+              onClick={() => {
+                setShowShifts(!showShifts);
+                setEditShifts(false);
+              }}
+            >
+              {showShifts ? "Hide shifts" : "Show shifts"}
+            </button>
+            <div className="shift-edit-slide" aria-hidden={!showShifts}>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={editShifts}
+                  disabled={!showShifts}
+                  tabIndex={showShifts ? 0 : -1}
+                  onChange={(e) => setEditShifts(e.target.checked)}
+                />
+                <span className="switch-track" aria-hidden="true" />
+                Edit shifts
+              </label>
+            </div>
+          </div>
+          <button
+            className="button"
+            onClick={() => setEditing({ driver: null })}
+            disabled={!drivers || allColorsTaken}
+            title={allColorsTaken ? `All ${colors.length} colors are in use` : undefined}
+          >
+            + Add driver
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -70,6 +118,16 @@ export default function DriversPage() {
           timeZone={config.time_zone}
           onEdit={(driver) => setEditing({ driver })}
           onRemove={setRemoving}
+          shifts={
+            showShifts && {
+              from: toMinutes(hours.start),
+              to: toMinutes(hours.end),
+              editing: editShifts,
+              selected: selectedShift,
+              onSelect: setSelectedShift,
+              onSaved: (saved) => setDrivers((list) => list.map((d) => (d.id === saved.id ? saved : d))),
+            }
+          }
         />
       )}
 

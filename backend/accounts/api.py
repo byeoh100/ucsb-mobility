@@ -2,11 +2,12 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from django.db import transaction
 from rest_framework import status
 
-from .models import DRIVER_COLORS, AdminEmail, Driver
+from .models import DRIVER_COLORS, AdminEmail, Driver, DriverShift
 from .permissions import IsAdmin
-from .serializers import DispatcherSerializer, DriverSerializer
+from .serializers import DispatcherSerializer, DriverSerializer, ShiftListSerializer
 
 
 class DriverViewSet(viewsets.ModelViewSet):
@@ -17,13 +18,32 @@ class DriverViewSet(viewsets.ModelViewSet):
     PATCH  /api/drivers/<id>/     edit
     DELETE /api/drivers/<id>/     remove (their rides become unassigned, once rides exist)
     GET    /api/drivers/colors/   the 24 preset colors
+    PUT    /api/drivers/<id>/shifts/  replace the driver's weekly shifts
     """
 
-    queryset = Driver.objects.order_by("name")
+    queryset = Driver.objects.order_by("name").prefetch_related("shifts")
     serializer_class = DriverSerializer
     permission_classes = [IsAdmin]
     pagination_class = None
-    http_method_names = ["get", "post", "patch", "delete"]
+    http_method_names = ["get", "post", "put", "patch", "delete"]
+
+    def update(self, request, *args, **kwargs):
+        if not kwargs.get("partial"):
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)  # PUT is only for shifts
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=["put"])
+    def shifts(self, request, pk=None):
+        """PUT {"shifts": [{"weekday": 0, "start": "09:00", "end": "13:00"}, ...]}:
+        the driver's whole week, replacing what was there."""
+        driver = self.get_object()
+        serializer = ShiftListSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            driver.shifts.all().delete()
+            DriverShift.objects.bulk_create(DriverShift(driver=driver, **s) for s in serializer.validated_data["shifts"])
+        # Fresh copy: the one above has the old shifts prefetched.
+        return Response(DriverSerializer(Driver.objects.get(pk=driver.pk)).data)
 
     @action(detail=False)
     def colors(self, request):

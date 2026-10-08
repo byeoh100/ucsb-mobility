@@ -1,6 +1,8 @@
+import { Fragment } from "react";
 import { ageLabel } from "../../lib/geo.js";
 import { formatPhone } from "../../lib/phone.js";
 import { formatTime } from "../../lib/time.js";
+import DriverShifts from "./DriverShifts.jsx";
 
 // List of drivers with Edit and Remove actions per row.
 //
@@ -9,7 +11,9 @@ import { formatTime } from "../../lib/time.js";
 //   colors    array of { value, label }, used to name each driver's color
 //   onEdit    (driver) => void
 //   onRemove  (driver) => void
-export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZone }) {
+//   shifts    false, or { from, to, editing, onSaved }: show each driver's
+//             shift timeline in a row under theirs (Show shifts)
+export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZone, shifts = false }) {
   const colorName = Object.fromEntries(colors.map((c) => [c.value, c.label]));
 
   if (drivers.length === 0) {
@@ -35,37 +39,46 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
         </thead>
         <tbody>
           {drivers.map((d) => (
-            <tr key={d.id}>
-              <td className="strong" data-label="Driver">
-                <span className="driver-name">
-                  <span
-                    className="swatch"
-                    style={{ background: d.color }}
-                    title={colorName[d.color] || d.color}
-                    aria-label={`Color: ${colorName[d.color] || d.color}`}
-                    role="img"
-                  />
-                  {d.name}
-                </span>
-              </td>
-              <td data-label="Email">{d.email}</td>
-              <td className="nowrap" data-label="Phone">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
-              <td data-label="Ride">
-                <CurrentRides rides={d.current_rides} location={d.location} timeZone={timeZone} />
-              </td>
-              <td className="col-actions">
-                <button className="button-quiet" onClick={() => onEdit(d)} aria-label={`Edit ${d.name}`}>
-                  Edit
-                </button>
-                <button
-                  className="button-quiet button-quiet-danger"
-                  onClick={() => onRemove(d)}
-                  aria-label={`Remove ${d.name}`}
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
+              <Fragment key={d.id}>
+                <tr className={shifts ? "has-shifts" : undefined}>
+                  <td className="strong" data-label="Driver">
+                    <span className="driver-name">
+                      <span
+                        className="swatch"
+                        style={{ background: d.color }}
+                        title={colorName[d.color] || d.color}
+                        aria-label={`Color: ${colorName[d.color] || d.color}`}
+                        role="img"
+                      />
+                      {d.name}
+                    </span>
+                  </td>
+                  <td data-label="Email">{d.email}</td>
+                  <td className="nowrap" data-label="Phone">{formatPhone(d.phone) || <span className="muted">—</span>}</td>
+                  <td data-label="Ride">
+                    <CurrentRides rides={d.current_rides} location={d.location} timeZone={timeZone} />
+                  </td>
+                  <td className="col-actions">
+                    <button className="button-quiet" onClick={() => onEdit(d)} aria-label={`Edit ${d.name}`}>
+                      Edit
+                    </button>
+                    <button
+                      className="button-quiet button-quiet-danger"
+                      onClick={() => onRemove(d)}
+                      aria-label={`Remove ${d.name}`}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+                {shifts && (
+                  <tr className="shift-row">
+                    <td colSpan={5}>
+                      <DriverShifts driver={d} {...shifts} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
           ))}
         </tbody>
       </table>

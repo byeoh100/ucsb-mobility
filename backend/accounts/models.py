@@ -82,3 +82,25 @@ class Driver(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class DriverShift(models.Model):
+    """One block of a driver's usual weekly schedule, e.g. Monday 9:00 to 13:00.
+
+    Shifts are only a guide for dispatch when assigning rides (the ride form
+    lists drivers on shift first). Nothing is assigned automatically, and a
+    driver can still be given rides outside their shifts.
+    """
+
+    WEEKDAYS = [(0, "Mon"), (1, "Tue"), (2, "Wed"), (3, "Thu"), (4, "Fri")]
+
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name="shifts")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAYS)  # Monday = 0, like Python
+    start = models.TimeField()
+    end = models.TimeField()
+
+    class Meta:
+        ordering = ["weekday", "start"]
+
+    def __str__(self):
+        return f"{self.driver} {self.get_weekday_display()} {self.start:%H:%M}-{self.end:%H:%M}"

@@ -58,6 +58,8 @@ export const driversApi = {
   create: (driver) => request("/drivers/", { method: "POST", body: driver }),
   update: (id, changes) => request(`/drivers/${id}/`, { method: "PATCH", body: changes }),
   remove: (id) => request(`/drivers/${id}/`, { method: "DELETE" }),
+  // The driver's whole week: [{ weekday, start: "HH:MM", end: "HH:MM" }]
+  shifts: (id, shifts) => request(`/drivers/${id}/shifts/`, { method: "PUT", body: { shifts } }),
 };
 
 export const ridesApi = {

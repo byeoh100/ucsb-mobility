@@ -75,6 +75,7 @@ export default function RidesPage() {
     sort,
     onSort: setSort,
     onEdit: (ride) => setEditing({ ride }),
+    drivers, // for the small "off shift" marker
   };
 
   function handleSaved(saved) {
