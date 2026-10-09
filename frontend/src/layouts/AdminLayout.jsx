@@ -8,6 +8,7 @@ const SECTIONS = [
   { to: "/admin/drivers", label: "Drivers" },
   { to: "/admin/dispatchers", label: "Dispatchers" },
   { to: "/admin/archive", label: "Archive" },
+  { to: "/admin/metrics", label: "Metrics" },
 ];
 
 export default function AdminLayout() {

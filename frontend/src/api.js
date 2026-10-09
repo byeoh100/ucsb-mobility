@@ -79,6 +79,11 @@ export const archiveApi = {
   list: (date) => request(`/archive/?date=${encodeURIComponent(date)}`),
 };
 
+// Rides per driver over campus dates, inclusive ("YYYY-MM-DD").
+export const statsApi = {
+  get: (from, to) => request(`/stats/?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+};
+
 export const locationApi = {
   send: ({ lat, lng, accuracy }) => request("/location/", { method: "POST", body: { lat, lng, accuracy } }),
 };

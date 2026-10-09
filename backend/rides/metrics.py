@@ -54,3 +54,76 @@ def ride_counts(driver, now=None):
         driver.rides_kept = mine.count()
         driver.rides_week = mine.filter(pickup_time__gte=start, pickup_time__lt=end).count()
     return {"week": driver.rides_week, "total": driver.purged_rides + driver.rides_kept}
+
+
+
+def range_stats(first_day, last_day, now=None):
+    """Everything the Metrics page shows for campus dates first_day through
+    last_day (inclusive), from the counted rides with pickups in that range.
+
+        total      rides
+        drivers    [{id, name, color, rides}], most rides first (none = left out)
+        by_day     [{date, rides}] for every date in the range, zeros included
+        by_hour    [{hour, rides}] for each hour of operation (pickup time)
+        top_place  {name, rides}: the place most rides start or end at, or None
+        riders     different riders, by phone number (for rides per rider)
+        weekdays   Mon-Fri dates in the range up to today, for averages
+
+    Rides older than the archive's retention have been deleted, so ranges
+    reaching further back than that only see what's left (their totals live
+    on in Driver.purged_rides, which has no dates)."""
+    from common import service_hours
+
+    from .models import Ride
+
+    now = now or timezone.now()
+    today = timezone.localtime(now).date()
+    rides = (
+        counted(Ride.objects.filter(driver__isnull=False), now)
+        .filter(pickup_time__date__gte=first_day, pickup_time__date__lte=last_day)
+        .select_related("driver")
+        .only("pickup_time", "rider_phone", "pickup_name", "dropoff_name", "driver__name", "driver__color")
+    )
+
+    days = {}
+    day = first_day
+    while day <= last_day:
+        days[day] = 0
+        day += timedelta(days=1)
+    open_hour = service_hours.start().hour
+    close = service_hours.end()
+    hours = {h: 0 for h in range(open_hour, close.hour + (1 if close.minute else 0))}
+    drivers = {}
+    places = {}  # lowercased name → {spelling: count}, so "Library" and "library" are one place
+    phones = set()
+
+    for ride in rides:
+        local = timezone.localtime(ride.pickup_time)
+        days[local.date()] = days.get(local.date(), 0) + 1
+        if local.hour in hours:
+            hours[local.hour] += 1
+        d = drivers.setdefault(ride.driver_id, {"id": ride.driver_id, "name": ride.driver.name, "color": ride.driver.color, "rides": 0})
+        d["rides"] += 1
+        for name in {ride.pickup_name.strip(), ride.dropoff_name.strip()} - {""}:
+            spellings = places.setdefault(name.lower(), {})
+            spellings[name] = spellings.get(name, 0) + 1
+        phones.add(ride.rider_phone)
+
+    top_place = None
+    if places:
+        # Most rides wins; ties go alphabetically, so the answer doesn't flicker.
+        key = min(places, key=lambda k: (-sum(places[k].values()), k))
+        spellings = places[key]
+        top_place = {"name": max(spellings, key=spellings.get), "rides": sum(spellings.values())}
+
+    return {
+        "from": first_day.isoformat(),
+        "to": last_day.isoformat(),
+        "total": sum(d["rides"] for d in drivers.values()),
+        "drivers": sorted(drivers.values(), key=lambda d: (-d["rides"], d["name"])),
+        "by_day": [{"date": d.isoformat(), "rides": n} for d, n in sorted(days.items())],
+        "by_hour": [{"hour": h, "rides": n} for h, n in hours.items()],
+        "top_place": top_place,
+        "riders": len(phones),
+        "weekdays": sum(1 for d in days if d.weekday() < 5 and d <= today),
+    }

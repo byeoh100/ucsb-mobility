@@ -319,3 +319,24 @@ class ArchiveRidesView(APIView):
         rides = list(Ride.objects.select_related("driver").filter(pickup_time__date=day).order_by("pickup_time"))
         data = RideSerializer(rides, many=True, context={"statuses": ride_statuses(rides)}).data
         return Response(data)
+
+
+class StatsView(APIView):
+    """GET /api/stats/?from=YYYY-MM-DD&to=YYYY-MM-DD: the Metrics page's numbers
+    for those campus dates (inclusive), at most a year. Dispatch only.
+
+    What's in it, and what counts as a ride: rides/metrics.py (range_stats).
+    """
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from .metrics import range_stats
+
+        first = parse_date(request.query_params.get("from"))
+        last = parse_date(request.query_params.get("to"))
+        if first > last:
+            return error("The start date has to be on or before the end date.")
+        if (last - first).days > 366:
+            return error("Pick a range of a year or less.")
+        return Response(range_stats(first, last))

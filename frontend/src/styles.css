@@ -960,3 +960,107 @@ dialog.modal.modal-profile { width: min(780px, calc(100vw - 2rem)); }
   .stat-value { font-size: 1.5rem; }
   .profile-edit-hint { opacity: 1; } /* no hover on phones */
 }
+
+/* ---------- Metrics ---------- */
+/* Date range: presets, then From / To */
+.range-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+.range-presets { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 3px; gap: 3px; }
+.range-presets button {
+  padding: 0.35rem 0.85rem; border: 0; border-radius: 6px; background: none; color: var(--accent);
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.range-presets button:hover:not(.active) { background: var(--bg); }
+.range-presets button.active { background: var(--accent); color: var(--white); }
+.range-field { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+
+/* Blocks in a 2 x 2 grid; each column is as wide as its widest block */
+.metrics-grid { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 1rem; }
+.metrics-block {
+  display: flex; flex-direction: column; gap: 0.9rem; min-width: 0;
+  padding: 1.1rem 1.25rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+.metrics-block-title { margin: 0; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.metrics-body { display: flex; gap: 2rem; align-items: center; flex: 1; }
+
+/* Ring: driver segments with the total in the middle */
+.ring-wrap { position: relative; width: 220px; height: 220px; flex: none; }
+.ring { width: 100%; height: 100%; overflow: visible; }
+.ring-track { fill: none; stroke: var(--ucsb-gray-light); }
+.ring-segment { fill: none; cursor: pointer; transition: stroke-width 0.15s, opacity 0.15s; }
+.ring-segment.dim { opacity: 0.3; }
+.ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.ring-total { font-size: 2.6rem; font-weight: 800; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.ring-unit { color: var(--muted); font-weight: 600; }
+
+/* Name | Rides list beside the ring */
+.metrics-list { align-self: stretch; display: flex; flex-direction: column; width: 15rem; }
+.metrics-list-head {
+  display: flex; justify-content: space-between; padding: 0 0.6rem 0.4rem; border-bottom: 2px solid var(--accent);
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--accent);
+}
+.metrics-list ul { list-style: none; margin: 0; padding: 0.3rem 0 0; max-height: 13rem; overflow-y: auto; }
+.metrics-list li {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0.6rem; border-radius: 6px;
+  cursor: default; transition: background 0.15s, opacity 0.15s;
+}
+.metrics-list li.active { background: var(--bg); }
+.metrics-list li.dim { opacity: 0.45; }
+.metrics-list li:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.metrics-list .swatch { width: 0.85rem; height: 0.85rem; flex: none; }
+.metrics-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.metrics-count { font-weight: 700; font-variant-numeric: tabular-nums; }
+.metrics-list li.active .metrics-name { font-weight: 700; }
+.metrics-list > p { margin: 0.75rem 0.6rem; }
+
+/* At a glance: 2 x 2 number tiles */
+.summary-tiles { display: grid; grid-template-columns: repeat(2, minmax(10.5rem, 1fr)); gap: 0.75rem; flex: 1; }
+.summary-tile {
+  display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
+  padding: 0.8rem 1rem; border-radius: var(--radius); background: var(--bg);
+}
+.summary-value { font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--accent); font-variant-numeric: tabular-nums; }
+.summary-value.text { max-width: 11rem; font-size: 1.15rem; line-height: 1.25; padding: 0.25rem 0 0.15rem; overflow-wrap: anywhere; }
+.summary-note { font-size: 0.82rem; color: var(--muted); max-width: 11rem; }
+
+/* Bar charts: one navy series, a light baseline, the top value as the scale */
+.bar-chart { display: flex; flex-direction: column; gap: 0.35rem; min-width: 22rem; }
+.bar-chart.loading { height: 11rem; }
+.bar-plot { position: relative; height: 9.5rem; margin-top: 0.6rem; padding-left: 1.6rem; border-bottom: 1px solid var(--muted); }
+.bar-plot::before { /* line at the top value */
+  content: ""; position: absolute; top: 0; left: 1.6rem; right: 0; border-top: 1px dashed var(--border);
+}
+.bar-max { position: absolute; top: -0.55em; left: 0; font-size: 0.7rem; font-weight: 700; color: var(--muted); }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 100%; }
+.bar-slot { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+.bar-slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
+.bar { position: relative; width: 100%; min-height: 0; border-radius: 4px 4px 0 0; background: var(--accent); transition: background 0.15s; }
+/* The count over the bar being pointed at */
+.bar-value {
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 3px;
+  font-size: 0.8rem; font-weight: 800; color: var(--text); white-space: nowrap; pointer-events: none;
+}
+.bar-slot.weekend .bar { background: var(--ucsb-aqua); }
+.bars:has(.bar-slot.active) .bar-slot:not(.active) .bar { background: #9FB3C8; }
+.bar-labels { display: flex; gap: 3px; padding-left: 1.6rem; }
+.bar-labels span { flex: 1; min-width: 0; overflow: visible; white-space: nowrap; font-size: 0.7rem; color: var(--muted); text-align: center; }
+
+@media (max-width: 1100px) {
+  .metrics-grid { grid-template-columns: auto; }
+}
+@media (max-width: 760px) {
+  .metrics-grid { grid-template-columns: minmax(0, 1fr); }
+  .metrics-body { flex-direction: column; gap: 1.25rem; }
+  .ring-wrap { width: 200px; height: 200px; }
+  .metrics-list { width: 100%; }
+  .summary-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bar-chart { min-width: 0; }
+  .range-picker { gap: 0.6rem; }
+  .range-presets { width: 100%; }
+  .range-presets button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-segment, .metrics-list li, .bar { transition: none; }
+}
