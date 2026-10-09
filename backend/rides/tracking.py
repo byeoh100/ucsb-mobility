@@ -28,10 +28,13 @@ def location_payload(driver, now=None):
     the server; viewers get a position on the map image.
     """
     now = now or timezone.now()
-    if not current_rides(driver, now):
+    rides = current_rides(driver, now)
+    if not rides:
         return None
     location = DriverLocation.objects.filter(driver=driver).first()
-    if location is None:
+    # A fix from before this trip started is where they *were* (likely the
+    # last rider's drop-off), not where they are: don't show it.
+    if location is None or location.updated_at < rides[0].started_at:
         return None
     age = (now - location.updated_at).total_seconds()
     return {

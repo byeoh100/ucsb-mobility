@@ -102,12 +102,15 @@ class RiderPageTests(TestCase):
         self.assertEqual((live["driver"], live["dropoffs_away"], live["driver_location"]), (None, None, None))
 
     def test_driver_location_while_driving(self):
-        DriverLocation.objects.create(driver=self.dana, lat=34.41264, lng=-119.848396)
+        with at(9, 49):
+            DriverLocation.objects.create(driver=self.dana, lat=34.41264, lng=-119.848396)
         with at(9, 50):
             self.assertIsNone(self.page()["live"]["driver_location"])  # not driving yet
         self.ride.started_at = local(D, 9, 50)
         self.ride.save()
-        with at(9, 50):
+        with at(9, 51):
+            self.assertIsNone(self.page()["live"]["driver_location"])  # that fix is from before this trip
+            DriverLocation.objects.filter(driver=self.dana).update(updated_at=local(D, 9, 51))
             loc = self.page()["live"]["driver_location"]
         self.assertTrue(loc["on_map"])
         self.assertNotIn("lat", loc)

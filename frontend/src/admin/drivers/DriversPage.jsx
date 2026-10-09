@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toMinutes } from "../../lib/shifts.js";
 import { driversApi } from "../../api.js";
@@ -33,7 +33,13 @@ export default function DriversPage() {
   const from = toMinutes(hours.start);
   const to = toMinutes(hours.end);
 
-  const replaceDriver = (saved) => setDrivers((list) => list.map((d) => (d.id === saved.id ? saved : d)));
+  // When each driver's shifts were last saved, so a list refresh that left
+  // before the save landed can't put their old shifts back.
+  const savedAt = useRef({});
+  const replaceDriver = (saved) => {
+    savedAt.current[saved.id] = Date.now();
+    setDrivers((list) => list.map((d) => (d.id === saved.id ? saved : d)));
+  };
   const saver = useShiftSaver(replaceDriver);
   const edit = useShiftEditing({
     from, to, editing: tab === "shifts" && editShifts,
@@ -43,9 +49,15 @@ export default function DriversPage() {
   const openDriver = open?.id != null ? drivers?.find((d) => d.id === open.id) : null;
 
   const load = useCallback(async () => {
+    const started = Date.now();
     try {
       const [driverList, colorList] = await Promise.all([driversApi.list(), driversApi.colors()]);
-      setDrivers(driverList);
+      setDrivers((current) =>
+        driverList.map((d) => {
+          const mine = current?.find((c) => c.id === d.id);
+          return mine && (savedAt.current[d.id] ?? 0) > started ? { ...d, shifts: mine.shifts } : d;
+        })
+      );
       setColors(colorList);
       setError("");
     } catch (err) {

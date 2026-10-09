@@ -93,6 +93,7 @@ def range_stats(first_day, last_day, now=None):
     open_hour = service_hours.start().hour
     close = service_hours.end()
     hours = {h: 0 for h in range(open_hour, close.hour + (1 if close.minute else 0))}
+    last_hour = max(hours)  # a pickup right at closing (7:00 PM) goes in the last bar
     drivers = {}
     places = {}  # lowercased name → {spelling: count}, so "Library" and "library" are one place
     phones = set()
@@ -100,8 +101,8 @@ def range_stats(first_day, last_day, now=None):
     for ride in rides:
         local = timezone.localtime(ride.pickup_time)
         days[local.date()] = days.get(local.date(), 0) + 1
-        if local.hour in hours:
-            hours[local.hour] += 1
+        if local.hour >= open_hour:
+            hours[min(local.hour, last_hour)] += 1
         d = drivers.setdefault(ride.driver_id, {"id": ride.driver_id, "name": ride.driver.name, "color": ride.driver.color, "rides": 0})
         d["rides"] += 1
         for name in {ride.pickup_name.strip(), ride.dropoff_name.strip()} - {""}:

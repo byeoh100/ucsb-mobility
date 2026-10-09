@@ -15,7 +15,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, F
+from django.db.models import F
 from django.utils import timezone
 
 ARCHIVE_HOUR = 8  # local time the previous day's rides move to the archive
@@ -54,10 +54,18 @@ def purge_expired(now=None):
 
     now = now or timezone.now()
     expired = Ride.objects.filter(pickup_time__date__lt=purge_before(now))
+    deleted = 0
     with transaction.atomic():
-        counts = counted(expired, now).filter(driver__isnull=False).values("driver").annotate(n=Count("id"))
-        for row in counts:
-            Driver.objects.filter(pk=row["driver"]).update(purged_rides=F("purged_rides") + row["n"])
-        deleted, _ = expired.delete()
+        # Each driver's rides are counted by what the DELETE itself removed,
+        # so two page loads purging at once can't both count the same rides
+        # (the second one's DELETE finds them already gone).
+        driver_ids = expired.filter(driver__isnull=False).values_list("driver", flat=True).distinct()
+        for driver_id in list(driver_ids):
+            n, _ = counted(expired.filter(driver_id=driver_id), now).delete()
+            if n:
+                Driver.objects.filter(pk=driver_id).update(purged_rides=F("purged_rides") + n)
+            deleted += n
+        rest, _ = expired.delete()  # unassigned rides, and ones that never completed
+        deleted += rest
     DriverLocation.objects.filter(updated_at__lt=now - LOCATION_RETENTION).delete()
     return deleted

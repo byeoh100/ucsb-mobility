@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { statsApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -25,14 +25,19 @@ export default function MetricsPage() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
 
+  // Only the newest request may update the page (typing a date sends one
+  // request per keystroke, and they can come back in any order).
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     if (!valid) return;
     setStats(null);
+    setError("");
     try {
-      setStats(await statsApi.get(from, to));
-      setError("");
+      const body = await statsApi.get(from, to);
+      if (request === latest.current) setStats(body);
     } catch (err) {
-      setError(err.data?.error || err.message);
+      if (request === latest.current) setError(err.data?.error || err.message);
     }
   }, [from, to, valid]);
 
@@ -64,7 +69,7 @@ export default function MetricsPage() {
         </p>
       )}
 
-      {valid && (
+      {valid && !error && (
         <div className="metrics-grid">
           <Block title="Rides by driver">
             <RidesRing stats={stats} />

@@ -83,8 +83,9 @@ class RideViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         repeat = serializer.validated_data.pop("repeat", None)
         if repeat is None:
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            ride = serializer.save()
+            # Re-serialized so the answer includes the new ride's status.
+            return Response(self.get_serializer(ride).data, status=status.HTTP_201_CREATED)
         rides = create_series(serializer.validated_data, repeat["dates"])
         data = self.get_serializer(rides[0]).data
         data["series_count"] = len(rides)
@@ -96,7 +97,10 @@ class RideViewSet(viewsets.ModelViewSet):
             return archived_response()
         if wants_following(request, ride):
             return self.update_following(request, ride, partial=kwargs.get("partial", False))
-        return super().update(request, *args, **kwargs)
+        response = super().update(request, *args, **kwargs)
+        # Status as of after the edit (a new pickup time can change it).
+        response.data = self.get_serializer(self.get_object()).data
+        return response
 
     def update_following(self, request, ride, partial):
         """PATCH ...?scope=following: this ride and the series' later rides.
@@ -337,6 +341,6 @@ class StatsView(APIView):
         last = parse_date(request.query_params.get("to"))
         if first > last:
             return error("The start date has to be on or before the end date.")
-        if (last - first).days > 366:
+        if (last - first).days >= 366:
             return error("Pick a range of a year or less.")
         return Response(range_stats(first, last))

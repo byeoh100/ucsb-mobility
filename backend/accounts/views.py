@@ -92,10 +92,12 @@ def sign_in(request, email, first_name="", last_name=""):
 
 
 def parse_json(request):
+    """The request's JSON object, or None if it isn't one."""
     try:
-        return json.loads(request.body or "{}")
-    except json.JSONDecodeError:
+        data = json.loads(request.body or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return None
+    return data if isinstance(data, dict) else None
 
 
 @require_GET

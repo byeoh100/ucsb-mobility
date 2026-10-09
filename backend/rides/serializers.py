@@ -77,9 +77,14 @@ class RideSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["link_token", "started_at", "completed_at", "series"]
 
-    # Ride progress and notes are private: only dispatch and the ride's own
-    # driver see them. (Notes may say what help the rider needs.)
-    PRIVATE_FIELDS = ("status", "rider_confirmed", "started_at", "completed_at", "notes")
+    # Private to dispatch and the ride's own driver: progress, notes (they may
+    # say what help the rider needs), the rider's contact details, and the
+    # rider link (it opens the rider page, live location included). Other
+    # drivers still see who/when/where, to arrange swaps.
+    PRIVATE_FIELDS = (
+        "status", "rider_confirmed", "started_at", "completed_at", "notes",
+        "link_token", "rider_phone", "rider_email",
+    )
 
     def to_representation(self, ride):
         data = super().to_representation(ride)

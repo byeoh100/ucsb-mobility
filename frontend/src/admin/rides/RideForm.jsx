@@ -261,6 +261,11 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))
               )}
+              {/* The driver list hasn't loaded (or failed): still show who it is,
+                  so choosing Unassigned is a real change. */}
+              {driverId !== "" && !drivers.some((d) => String(d.id) === String(driverId)) && (
+                <option value={driverId}>{ride?.driver === driverId ? ride.driver_name ?? "Assigned driver" : "Assigned driver"}</option>
+              )}
             </select>
           </span>
           {error("driver")}

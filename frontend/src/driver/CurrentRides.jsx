@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import RideCard from "./RideCard.jsx";
 
 // The driver's current ride(s): every ride that's on the way. Riders can share
@@ -13,6 +13,18 @@ import RideCard from "./RideCard.jsx";
 export default function CurrentRides({ rides, cardProps, you, sharing }) {
   const [activeId, setActiveId] = useState(null);
   const swipeStart = useRef(null);
+
+  // A passenger just added (e.g. "Add next ride") comes into view, even if
+  // the driver had picked a tab before.
+  const seen = useRef(null);
+  const ids = rides.map((r) => r.id).join(",");
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = new Set(rides.map((r) => r.id));
+    if (!before) return;
+    const added = rides.filter((r) => !before.has(r.id));
+    if (added.length) setActiveId(added[added.length - 1].id);
+  }, [ids]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stay on the chosen passenger while they're on board; otherwise show the
   // one started most recently (e.g. right after "Start next ride").

@@ -38,8 +38,9 @@ export default function useLocationSharing(active) {
         await locationApi.send(latest);
         setState("sharing");
       } catch (err) {
-        // 409: the server says no ride is on the way anymore; stop sending.
-        if (err.status === 409) stopped = true;
+        // 409: the server says no ride is on the way anymore (e.g. it timed
+        // out); stop sending, stop watching GPS, and let the screen sleep.
+        if (err.status === 409) stop();
       }
     }
 
@@ -55,14 +56,19 @@ export default function useLocationSharing(active) {
     );
 
     // Keep reporting even when standing still (watchPosition only fires on change).
+    // (A second of slack: the timer ticks about 10 s after the last send, and
+    // "not quite 10 s" would otherwise skip a tick and send every 20 s.)
     const timer = setInterval(() => {
-      if (document.visibilityState === "visible" && Date.now() - lastSent >= SEND_EVERY_MS) send();
+      if (document.visibilityState === "visible" && Date.now() - lastSent >= SEND_EVERY_MS - 1_000) send();
     }, SEND_EVERY_MS);
 
     async function keepAwake() {
       try {
-        if ("wakeLock" in navigator && document.visibilityState === "visible") {
-          wakeLock = await navigator.wakeLock.request("screen");
+        if ("wakeLock" in navigator && document.visibilityState === "visible" && !stopped) {
+          const lock = await navigator.wakeLock.request("screen");
+          // Stopped while the request was pending: let go right away.
+          if (stopped) lock.release().catch(() => {});
+          else wakeLock = lock;
         }
       } catch {
         /* not supported or refused: GPS still works while the screen is on */
@@ -71,14 +77,18 @@ export default function useLocationSharing(active) {
     keepAwake();
     document.addEventListener("visibilitychange", keepAwake);
 
-    return () => {
+    function stop() {
+      if (stopped) return;
       stopped = true;
       clearTimeout(slowTimer);
       navigator.geolocation.clearWatch(watchId);
       clearInterval(timer);
       document.removeEventListener("visibilitychange", keepAwake);
       wakeLock?.release().catch(() => {});
-    };
+      setState("off");
+    }
+
+    return stop;
   }, [active]);
 
   return { position: active ? position : null, state };

@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { driversApi } from "../../api.js";
 import { STEP, fromMinutes, placeNewShift, roomFor, snap, toMinutes } from "../../lib/shifts.js";
 
+// The order the server keeps a week in. Sorting before showing a change means
+// list positions (which the menu and keyboard use) don't shift when the save
+// comes back.
+const byDayThenStart = (a, b) => a.weekday - b.weekday || toMinutes(a.start) - toMinutes(b.start);
+
 // Editing shifts in place, shared by the driver modal (one driver's week) and
 // the Shifts tab (everyone's week). Shifts are always edited per driver: each
 // change sends that driver's whole week to the server.
@@ -29,29 +34,37 @@ export function useShiftSaver(onSaved) {
   const [status, setStatus] = useState(""); // "", "saving", "saved"
   const [error, setError] = useState("");
   const latest = useRef({}); // driverId → number of their newest save
+  const applied = useRef({}); // driverId → number of the newest save the server confirmed
   const inFlight = useRef(0);
+  const lastOk = useRef(true); // how the most recently finished save went
 
   async function save(driverId, shifts) {
     const mine = (latest.current[driverId] ?? 0) + 1;
     latest.current[driverId] = mine;
     inFlight.current += 1;
-    setPending((p) => ({ ...p, [driverId]: shifts }));
+    setPending((p) => ({ ...p, [driverId]: [...shifts].sort(byDayThenStart) }));
     setStatus("saving");
     setError("");
-    let failed = false;
     try {
       const saved = await driversApi.shifts(driverId, shifts);
-      if (latest.current[driverId] === mine) onSaved(saved);
+      // Keep any confirmed week newer than what's shown, even if a later save
+      // is still on its way: if that one fails, this is what the server has.
+      if (mine > (applied.current[driverId] ?? 0)) {
+        applied.current[driverId] = mine;
+        onSaved(saved);
+      }
+      lastOk.current = true;
+      setError("");
     } catch (err) {
-      failed = true;
+      lastOk.current = false;
       const detail = err.data?.shifts;
       setError((Array.isArray(detail) && (detail[0]?.non_field_errors?.[0] || detail[0])) || err.message);
     } finally {
       inFlight.current -= 1;
       // Only the newest save for this driver decides what's shown; on failure
-      // this puts their last saved week back.
+      // this puts their last confirmed week back.
       if (latest.current[driverId] === mine) setPending(({ [driverId]: _, ...rest }) => rest);
-      if (inFlight.current === 0) setStatus(failed ? "" : "saved");
+      if (inFlight.current === 0) setStatus(lastOk.current ? "saved" : "");
     }
   }
 
@@ -70,6 +83,7 @@ export function useShiftEditing({ from, to, editing, weekOf, save }) {
   const [selected, setSelected] = useState(null);
   const drag = useRef(null);
   const pressTimer = useRef(null);
+  const pressStart = useRef(null);
   const span = to - from;
 
   const shown = (driverId) => (draft?.driverId === driverId ? draft.shifts : weekOf(driverId));
@@ -94,14 +108,20 @@ export function useShiftEditing({ from, to, editing, weekOf, save }) {
   useEffect(() => {
     if (!menu) return;
     const close = () => setMenu(null);
-    const onKey = (e) => e.key === "Escape" && close();
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      // Escape closes just the menu, not the driver modal it's inside.
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    };
     window.addEventListener("pointerdown", close);
     window.addEventListener("scroll", close, true);
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     return () => {
       window.removeEventListener("pointerdown", close);
       window.removeEventListener("scroll", close, true);
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
     };
   }, [menu]);
 
@@ -147,6 +167,7 @@ export function useShiftEditing({ from, to, editing, weekOf, save }) {
     }
     d.draft = d.shifts.map((x, i) => (i === d.index ? { ...x, start: fromMinutes(s), end: fromMinutes(en) } : x));
     setDraft({ driverId: d.driverId, shifts: d.draft });
+    setSelected(shiftKey(d.driverId, d.draft[d.index])); // stays highlighted as it moves
   }
 
   function endDrag() {
@@ -196,10 +217,15 @@ export function useShiftEditing({ from, to, editing, weekOf, save }) {
         if (e.pointerType !== "touch") return;
         const { clientX: x, clientY: y } = e;
         const minute = minuteAt(e);
+        pressStart.current = { x, y };
         pressTimer.current = setTimeout(() => openMenu(x, y, { ...target, minute }), LONG_PRESS_MS);
       },
       onPointerUp: cancel,
-      onPointerMove: cancel,
+      // A finger always wobbles a little; only a real move cancels the press.
+      onPointerMove: (e) => {
+        const p = pressStart.current;
+        if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) >= MOVE_SLOP) cancel();
+      },
       onPointerCancel: cancel,
     };
   }

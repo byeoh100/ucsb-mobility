@@ -14,6 +14,8 @@ export default function ArchivePage() {
   const [days, setDays] = useState(null); // null = loading
   const [retention, setRetention] = useState(config.archive_retention_days);
   const [rides, setRides] = useState(null);
+  const [ridesError, setRidesError] = useState("");
+  const [attempt, setAttempt] = useState(0); // bumped by Try again, to reload the day's rides
   const [error, setError] = useState("");
   const [sort, setSort] = useState({ key: "time", dir: "asc" });
 
@@ -43,14 +45,15 @@ export default function ArchivePage() {
     }
     let cancelled = false;
     setRides(null);
+    setRidesError("");
     archiveApi
       .list(selectedDay.date)
       .then((list) => !cancelled && setRides(list))
-      .catch((err) => !cancelled && setError(err.message));
+      .catch((err) => !cancelled && setRidesError(err.message));
     return () => {
       cancelled = true;
     };
-  }, [selectedDay?.date]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedDay?.date, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className="stack">
@@ -104,7 +107,12 @@ export default function ArchivePage() {
                 <h2 className="archive-heading">
                   {formatDayLabel(selectedDay.date)} <span className="count">{selectedDay.count}</span>
                 </h2>
-                {rides === null ? (
+                {ridesError ? (
+                  <p className="error" role="alert">
+                    {ridesError}{" "}
+                    <button className="button-quiet" onClick={() => setAttempt((n) => n + 1)}>Try again</button>
+                  </p>
+                ) : rides === null ? (
                   <p className="muted">Loading rides…</p>
                 ) : (
                   <RideTable rides={rides} timeZone={config.time_zone} sort={sort} onSort={setSort} readOnly />

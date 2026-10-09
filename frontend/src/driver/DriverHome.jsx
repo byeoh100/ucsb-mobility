@@ -36,12 +36,18 @@ export default function DriverHome() {
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(null);
 
+  // Only the newest request may update the list, so a slow answer for the
+  // day you just left can't show up under this one.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     try {
-      setRides(await ridesApi.list(date));
+      const list = await ridesApi.list(date);
+      if (request !== latest.current) return;
+      setRides(list);
       setError("");
     } catch (err) {
-      setError(err.message);
+      if (request === latest.current) setError(err.message);
     }
   }, [date]);
 
@@ -106,7 +112,14 @@ export default function DriverHome() {
   }
 
   // Share GPS only while a ride is on the way; also drives the "You" dot.
-  const { position, state: sharing } = useLocationSharing(current.length > 0);
+  // Whether one is comes from today's list, and is kept while the driver
+  // looks at another day (or the list is reloading), so peeking at tomorrow
+  // doesn't stop sharing mid-ride.
+  const [onTheWay, setOnTheWay] = useState(false);
+  useEffect(() => {
+    if (rides && isToday) setOnTheWay(current.length > 0);
+  }, [rides, isToday, current.length]);
+  const { position, state: sharing } = useLocationSharing(onTheWay);
   const you = position ? toMapPoint(position, config.map_calibration) : null;
   const done = mine.filter((r) => r.status === "completed");
 

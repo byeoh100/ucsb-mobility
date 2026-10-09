@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { driversApi, ridesApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -21,7 +21,9 @@ export default function RidesPage() {
 
   const [params, setParams] = useSearchParams();
   const date = isValidDate(params.get("date")) ? params.get("date") : today;
-  const setDate = (next) => setParams(next === today ? {} : { date: next });
+  // Typing in the date box changes the date per keystroke; replace those
+  // history entries instead of piling them up.
+  const setDate = (next, { replace = false } = {}) => setParams(next === today ? {} : { date: next }, { replace });
   // Days before this have moved to the Archive (at 8 AM the next morning).
   const archived = date < archiveCutoffIn(timeZone, config.archive_hour);
 
@@ -40,16 +42,22 @@ export default function RidesPage() {
     driversApi.list().then(setDrivers).catch(() => {});
   }, []);
 
+  // Only the newest request may update the page, so a slow answer for the
+  // previous day can't land under this day's header.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     if (archived) {
       setRides([]);
       return;
     }
     try {
-      setRides(await ridesApi.list(date));
+      const list = await ridesApi.list(date);
+      if (request !== latest.current) return;
+      setRides(list);
       setError("");
     } catch (err) {
-      setError(err.message);
+      if (request === latest.current) setError(err.message);
     }
   }, [date, archived]);
 

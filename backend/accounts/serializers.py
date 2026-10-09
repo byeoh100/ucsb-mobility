@@ -117,7 +117,13 @@ class DispatcherSerializer(serializers.ModelSerializer):
         return user.last_login if user else None
 
     def validate_email(self, value):
+        from .backup import BACKUP_DOMAIN
+
         email = normalize_email(value)
+        if email.endswith("@" + BACKUP_DOMAIN):
+            # Reserved for the backup sign-in accounts; on this list it would
+            # turn the backup *driver* password into dispatch access.
+            raise serializers.ValidationError("That address is reserved for backup sign-in.")
         as_drf_error(validate_list_email, email)
         if AdminEmail.objects.filter(email=email).exists():
             raise serializers.ValidationError("This email is already a dispatcher.")

@@ -48,7 +48,9 @@ def username_from_email(email):
 def password_matches(username, password):
     expected = password_for(username)
     # Constant-time comparison, so response timing doesn't hint at the password.
-    return bool(expected) and hmac.compare_digest(expected.encode(), (password or "").encode())
+    if not isinstance(password, str):
+        return False
+    return bool(expected) and hmac.compare_digest(expected.encode(), password.encode())
 
 
 def ensure_driver_profile():

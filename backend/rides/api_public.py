@@ -53,6 +53,8 @@ class RiderPinsView(Public):
         ride = self.ride(token)
         if phase_of(ride, timezone.now()) not in (UPCOMING, LIVE):
             return Response({"error": "This ride can't be changed anymore."}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(request.data, dict):
+            return Response({"error": "Send pickup and dropoff pins."}, status=status.HTTP_400_BAD_REQUEST)
         updates = {}
         for which in ("pickup", "dropoff"):
             if which not in request.data:
@@ -109,6 +111,14 @@ class RideLookupView(Public):
 
     throttle_classes = [ScopedRateThrottle, PhoneNumberThrottle, GlobalLookupThrottle]
     throttle_scope = "ride_lookup"
+
+    def check_throttles(self, request):
+        # Stop at the first limit that says no. (DRF's default asks every
+        # throttle, so requests one visitor gets refused would still use up
+        # the shared ceiling, letting one visitor lock everyone out.)
+        for throttle in self.get_throttles():
+            if not throttle.allow_request(request, self):
+                self.throttled(request, throttle.wait())
 
     def get(self, request):
         try:

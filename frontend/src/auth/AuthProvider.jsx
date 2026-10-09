@@ -45,7 +45,14 @@ export function AuthProvider({ children }) {
   // page's leftover state. Landing on plain /sign-in (no ?next=) means the next
   // person isn't sent to the last person's page.
   const signOut = useCallback(async () => {
-    await authApi.signOut();
+    try {
+      await authApi.signOut();
+    } catch {
+      // Still signed in on the server: say so, rather than leaving the next
+      // person on this account.
+      window.alert("Couldn't sign out. Check your connection and try again.");
+      return;
+    }
     window.google?.accounts?.id?.disableAutoSelect();
     window.location.replace("/sign-in");
   }, []);

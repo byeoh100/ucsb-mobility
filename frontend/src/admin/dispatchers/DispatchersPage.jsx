@@ -107,9 +107,9 @@ export default function DispatchersPage() {
                       {d.email} {d.is_you && <span className="you-tag">you</span>}
                     </span>
                   </td>
-                  <td data-label="Added">{formatDate(d.created_at)}</td>
+                  <td data-label="Added">{formatDate(d.created_at, config.time_zone)}</td>
                   <td data-label="Signed in">
-                    {d.last_sign_in ? formatDate(d.last_sign_in) : <span className="muted">Not yet</span>}
+                    {d.last_sign_in ? formatDate(d.last_sign_in, config.time_zone) : <span className="muted">Not yet</span>}
                   </td>
                   <td className="col-actions">
                     <button
@@ -162,6 +162,7 @@ export default function DispatchersPage() {
   );
 }
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+// In campus time, like every other date in the app.
+function formatDate(iso, timeZone) {
+  return new Date(iso).toLocaleDateString("en-US", { timeZone, month: "short", day: "numeric", year: "numeric" });
 }
