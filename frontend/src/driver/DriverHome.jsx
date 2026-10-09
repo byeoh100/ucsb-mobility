@@ -74,6 +74,7 @@ export default function DriverHome() {
       key={ride.id}
       {...cardProps(ride)}
       showDriver={showDriver}
+      onBoard={current.length > 0}
       expanded={expanded === ride.id}
       onToggle={() => setExpanded(expanded === ride.id ? null : ride.id)}
     />
@@ -85,7 +86,8 @@ export default function DriverHome() {
     ? mine.filter((r) => r.status === "on_the_way").sort((a, b) => (a.started_at < b.started_at ? -1 : 1))
     : [];
   const upcoming = mine.filter((r) => r.status === "not_confirmed");
-  // "Start next ride" picks the soonest one; drivers can pick any other with "On the way!".
+  // "Start next ride" picks the soonest one; drivers can pick any other from its
+// row ("Start ride", or "Add to current" with a rider already on board).
   const next = isToday ? upcoming[0] : null;
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");

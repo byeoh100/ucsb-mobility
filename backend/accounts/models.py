@@ -66,6 +66,9 @@ class Driver(models.Model):
         max_length=7, choices=DRIVER_COLORS, unique=True,
         error_messages={"unique": "Another driver already has this color."},
     )
+    # Rides they gave whose records were since deleted by the archive purge
+    # (rides/archive.py), so their all-time count survives it.
+    purged_rides = models.PositiveIntegerField(default=0, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

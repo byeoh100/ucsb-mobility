@@ -7,7 +7,8 @@ import { NotesSection, useAction } from "./RideCard.jsx";
 
 // Compact list row; tap to open. The row already shows time, rider and route,
 // so the opened part only adds what's missing:
-//   your upcoming ride   map, notes, On the way!
+//   your upcoming ride   map, notes, Start ride (or Add to current, with a
+//                        rider already on board)
 // Your finished rides don't open: they have a small Reopen instead (if the
 // driver marked them complete today).
 //   someone else's ride  driver, map
@@ -17,6 +18,7 @@ import { NotesSection, useAction } from "./RideCard.jsx";
 //   showDriver  show the driver's color dot (All rides)
 //   mine        it's the signed-in driver's ride
 //   canStart    mine, today, not started or finished
+//   onBoard     the driver already has a ride in Current
 //   canReopen   mine, today, marked complete by the driver
 export default function RideRow({ ride, expanded, onToggle, showDriver, timeZone, ...props }) {
   if (props.mine && ride.status === "completed") return <DoneRow ride={ride} timeZone={timeZone} {...props} />;
@@ -47,7 +49,7 @@ export default function RideRow({ ride, expanded, onToggle, showDriver, timeZone
   );
 }
 
-function RideDetails({ ride, mine, canStart, onChanged }) {
+function RideDetails({ ride, mine, canStart, onBoard, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const run = useAction(ride, onChanged, setBusy, setError);
@@ -76,7 +78,7 @@ function RideDetails({ ride, mine, canStart, onChanged }) {
         <NotesSection notes={ride.notes} />
         {canStart && ride.status === "not_confirmed" && (
           <button className="button otw-button" onClick={() => run(ridesApi.start)} disabled={busy}>
-            {busy ? "Starting…" : "On the way!"}
+            {busy ? "Starting…" : onBoard ? "Add to current" : "Start ride"}
           </button>
         )}
       </>

@@ -1,19 +1,15 @@
-import { Fragment } from "react";
 import { ageLabel } from "../../lib/geo.js";
 import { formatPhone } from "../../lib/phone.js";
 import { formatTime } from "../../lib/time.js";
-import DriverShifts from "./DriverShifts.jsx";
 
-// List of drivers with Edit and Remove actions per row.
+// List of drivers. Clicking one opens the driver modal, where they're edited
+// or removed.
 //
 // Props:
 //   drivers   array of { id, name, email, phone, color }
 //   colors    array of { value, label }, used to name each driver's color
-//   onEdit    (driver) => void
-//   onRemove  (driver) => void
-//   shifts    false, or { from, to, editing, onSaved }: show each driver's
-//             shift timeline in a row under theirs (Show shifts)
-export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZone, shifts = false }) {
+//   onOpen    (driver) => void
+export default function DriverTable({ drivers, colors, onOpen, timeZone }) {
   const colorName = Object.fromEntries(colors.map((c) => [c.value, c.label]));
 
   if (drivers.length === 0) {
@@ -34,13 +30,16 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
             <th>UCSB email</th>
             <th>Phone</th>
             <th>Current ride</th>
-            <th className="col-actions"><span className="visually-hidden">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           {drivers.map((d) => (
-              <Fragment key={d.id}>
-                <tr className={shifts ? "has-shifts" : undefined}>
+                <tr
+                  key={d.id}
+                  className="clickable-row"
+                  // The whole row opens the driver; its own buttons and links do their own thing.
+                  onClick={(e) => !e.target.closest("a, button") && onOpen(d)}
+                >
                   <td className="strong" data-label="Driver">
                     <span className="driver-name">
                       <span
@@ -50,7 +49,9 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
                         aria-label={`Color: ${colorName[d.color] || d.color}`}
                         role="img"
                       />
-                      {d.name}
+                      <button type="button" className="link-button" onClick={() => onOpen(d)}>
+                        {d.name}
+                      </button>
                     </span>
                   </td>
                   <td data-label="Email">{d.email}</td>
@@ -58,27 +59,7 @@ export default function DriverTable({ drivers, colors, onEdit, onRemove, timeZon
                   <td data-label="Ride">
                     <CurrentRides rides={d.current_rides} location={d.location} timeZone={timeZone} />
                   </td>
-                  <td className="col-actions">
-                    <button className="button-quiet" onClick={() => onEdit(d)} aria-label={`Edit ${d.name}`}>
-                      Edit
-                    </button>
-                    <button
-                      className="button-quiet button-quiet-danger"
-                      onClick={() => onRemove(d)}
-                      aria-label={`Remove ${d.name}`}
-                    >
-                      Remove
-                    </button>
-                  </td>
                 </tr>
-                {shifts && (
-                  <tr className="shift-row">
-                    <td colSpan={5}>
-                      <DriverShifts driver={d} {...shifts} />
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
           ))}
         </tbody>
       </table>

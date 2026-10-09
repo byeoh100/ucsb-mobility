@@ -29,10 +29,17 @@ class DriverSerializer(serializers.ModelSerializer):
     location = serializers.SerializerMethodField()
     # Usual weekly shifts (read here; changed through /api/drivers/<id>/shifts/).
     shifts = serializers.SerializerMethodField()
+    # Rides given this week and all time (rides/metrics.py).
+    ride_counts = serializers.SerializerMethodField()
 
     class Meta:
         model = Driver
-        fields = ["id", "email", "name", "phone", "color", "current_rides", "location", "shifts"]
+        fields = ["id", "email", "name", "phone", "color", "current_rides", "location", "shifts", "ride_counts"]
+
+    def get_ride_counts(self, driver):
+        from rides.metrics import ride_counts
+
+        return ride_counts(driver)
 
     def get_shifts(self, driver):
         return ShiftSerializer(driver.shifts.all(), many=True).data

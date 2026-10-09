@@ -46,3 +46,47 @@ export function roomFor(shifts, index, open, close) {
   });
   return [lo, hi];
 }
+
+// Where a new shift would go if added at `minute` on `weekday`: 1 hour in that
+// hour block, moved over or shortened to fit between the driver's other
+// shifts. null if there's no room (or the spot is inside one of their shifts).
+export function placeNewShift(shifts, weekday, minute, open, close) {
+  const at = Math.floor(minute / STEP) * STEP;
+  const inside = shifts.some((s) => s.weekday === weekday && toMinutes(s.start) <= at && at < toMinutes(s.end));
+  if (inside) return null;
+  const probe = [...shifts, { weekday, start: fromMinutes(at), end: fromMinutes(at) }];
+  const [lo, hi] = roomFor(probe, probe.length - 1, open, close);
+  let start = Math.min(Math.max(Math.floor(at / 60) * 60, open), close - 60);
+  start = Math.max(start, lo);
+  if (start + 60 > hi) start = Math.max(lo, hi - 60);
+  const end = Math.min(start + 60, hi);
+  if (end - start < STEP) return null;
+  return { weekday, start: fromMinutes(start), end: fromMinutes(end) };
+}
+
+// The stretches of a day nobody is on shift: [[start, end], ...] in minutes.
+export function gapsIn(shifts, open, close) {
+  const spans = shifts.map((s) => [toMinutes(s.start), toMinutes(s.end)]).sort((a, b) => a[0] - b[0]);
+  const gaps = [];
+  let covered = open;
+  for (const [s, e] of spans) {
+    if (s > covered) gaps.push([covered, Math.min(s, close)]);
+    covered = Math.max(covered, e);
+  }
+  if (covered < close) gaps.push([covered, close]);
+  return gaps.filter(([s, e]) => e > s);
+}
+
+// Text color that reads best on a driver's color (dark on the light colors).
+export function textOn(hex) {
+  const lum = (h) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const c = parseInt(h.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const bg = lum(hex);
+  return contrast(bg, 1) >= contrast(bg, lum("#1d2329")) ? "#ffffff" : "#1d2329";
+}

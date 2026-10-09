@@ -21,11 +21,15 @@ class DriverViewSet(viewsets.ModelViewSet):
     PUT    /api/drivers/<id>/shifts/  replace the driver's weekly shifts
     """
 
-    queryset = Driver.objects.order_by("name").prefetch_related("shifts")
     serializer_class = DriverSerializer
     permission_classes = [IsAdmin]
     pagination_class = None
     http_method_names = ["get", "post", "put", "patch", "delete"]
+
+    def get_queryset(self):
+        from rides.metrics import with_ride_counts
+
+        return with_ride_counts(Driver.objects.order_by("name").prefetch_related("shifts"))
 
     def update(self, request, *args, **kwargs):
         if not kwargs.get("partial"):
@@ -43,7 +47,7 @@ class DriverViewSet(viewsets.ModelViewSet):
             driver.shifts.all().delete()
             DriverShift.objects.bulk_create(DriverShift(driver=driver, **s) for s in serializer.validated_data["shifts"])
         # Fresh copy: the one above has the old shifts prefetched.
-        return Response(DriverSerializer(Driver.objects.get(pk=driver.pk)).data)
+        return Response(DriverSerializer(self.get_queryset().get(pk=driver.pk)).data)
 
     @action(detail=False)
     def colors(self, request):

@@ -1,38 +1,46 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { toMinutes } from "../../lib/shifts.js";
 import { driversApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import Modal from "../../components/Modal.jsx";
 import DriverForm from "./DriverForm.jsx";
+import DriverProfile, { ProfileHeader } from "./DriverProfile.jsx";
 import DriverTable from "./DriverTable.jsx";
+import ShiftSchedule from "./ShiftSchedule.jsx";
+import ShiftStatus from "./ShiftStatus.jsx";
+import { useShiftEditing, useShiftSaver } from "./useShiftEditing.js";
 
-// Admin → Drivers. Owns the data; child components display and edit it.
+// Admin → Drivers, with two tabs:
+//   Drivers  the list; click a driver for the driver modal (ride counts, shifts)
+//   Shifts   everyone's week at once, to spot gaps (?tab=shifts)
+// Owns the data; child components display and edit it.
 export default function DriversPage() {
   const { config } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "shifts" ? "shifts" : "drivers";
   const [drivers, setDrivers] = useState(null); // null = loading
   const [colors, setColors] = useState([]);
   const [error, setError] = useState("");
-  // null = form closed, { driver: null } = adding, { driver } = editing
-  const [editing, setEditing] = useState(null);
+  // The driver modal: null = closed, or { id, form, back }: form = showing the
+  // details form (id null = adding a driver); back = it was opened from the
+  // profile, so Cancel and Save return there.
+  const [open, setOpen] = useState(null);
   const [removing, setRemoving] = useState(null); // driver pending removal
-  const [showShifts, setShowShifts] = useState(false);
   const [editShifts, setEditShifts] = useState(false);
-  // The one highlighted shift on the page ({ driverId, key }), if any.
-  const [selectedShift, setSelectedShift] = useState(null);
-
-  // Clicking anywhere that isn't a shift clears the highlight. (A click on a
-  // shift highlights that one instead; the timeline handles it.)
-  useEffect(() => {
-    if (!editShifts) {
-      setSelectedShift(null);
-      return;
-    }
-    const clear = (e) => !e.target.closest?.(".shift-block") && setSelectedShift(null);
-    document.addEventListener("pointerdown", clear);
-    return () => document.removeEventListener("pointerdown", clear);
-  }, [editShifts]);
   const hours = config.service_hours ?? { start: "07:00", end: "19:00" };
+  const from = toMinutes(hours.start);
+  const to = toMinutes(hours.end);
+
+  const replaceDriver = (saved) => setDrivers((list) => list.map((d) => (d.id === saved.id ? saved : d)));
+  const saver = useShiftSaver(replaceDriver);
+  const edit = useShiftEditing({
+    from, to, editing: tab === "shifts" && editShifts,
+    weekOf: (id) => saver.weekOf(drivers.find((d) => d.id === id)),
+    save: saver.save,
+  });
+  const openDriver = open?.id != null ? drivers?.find((d) => d.id === open.id) : null;
 
   const load = useCallback(async () => {
     try {
@@ -66,43 +74,46 @@ export default function DriversPage() {
           Drivers {drivers && <span className="count">{drivers.length}</span>}
         </h1>
         <div className="page-actions">
-          {/* Show shifts fills in while on, and the Edit shifts switch slides out of it. */}
-          <div className={`shift-controls${showShifts ? " on" : ""}`}>
+          {tab === "shifts" ? (
+            <label className="switch">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={editShifts}
+                onChange={(e) => setEditShifts(e.target.checked)}
+                disabled={!drivers?.length}
+              />
+              <span className="switch-track" aria-hidden="true" />
+              Edit shifts
+            </label>
+          ) : (
             <button
-              type="button"
-              className="shift-toggle"
-              aria-pressed={showShifts}
-              onClick={() => {
-                setShowShifts(!showShifts);
-                setEditShifts(false);
-              }}
+              className="button"
+              onClick={() => setOpen({ id: null, form: true })}
+              disabled={!drivers || allColorsTaken}
+              title={allColorsTaken ? `All ${colors.length} colors are in use` : undefined}
             >
-              {showShifts ? "Hide shifts" : "Show shifts"}
+              + Add driver
             </button>
-            <div className="shift-edit-slide" aria-hidden={!showShifts}>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={editShifts}
-                  disabled={!showShifts}
-                  tabIndex={showShifts ? 0 : -1}
-                  onChange={(e) => setEditShifts(e.target.checked)}
-                />
-                <span className="switch-track" aria-hidden="true" />
-                Edit shifts
-              </label>
-            </div>
-          </div>
-          <button
-            className="button"
-            onClick={() => setEditing({ driver: null })}
-            disabled={!drivers || allColorsTaken}
-            title={allColorsTaken ? `All ${colors.length} colors are in use` : undefined}
-          >
-            + Add driver
-          </button>
+          )}
         </div>
+      </div>
+
+      <div className="segmented sliding page-tabs" role="tablist" aria-label="Drivers or shifts">
+        <span className={`segmented-thumb${tab === "shifts" ? " at-end" : ""}`} aria-hidden="true" />
+        <button role="tab" aria-selected={tab === "drivers"} onClick={() => setParams({}, { replace: true })}>
+          Drivers
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "shifts"}
+          onClick={() => {
+            setEditShifts(false);
+            setParams({ tab: "shifts" }, { replace: true });
+          }}
+        >
+          Shifts
+        </button>
       </div>
 
       {error && (
@@ -111,43 +122,68 @@ export default function DriversPage() {
         </p>
       )}
       {drivers === null && !error && <p className="muted">Loading drivers…</p>}
-      {drivers && (
+      {drivers && tab === "drivers" && (
         <DriverTable
           drivers={drivers}
           colors={colors}
           timeZone={config.time_zone}
-          onEdit={(driver) => setEditing({ driver })}
-          onRemove={setRemoving}
-          shifts={
-            showShifts && {
-              from: toMinutes(hours.start),
-              to: toMinutes(hours.end),
-              editing: editShifts,
-              selected: selectedShift,
-              onSelect: setSelectedShift,
-              onSaved: (saved) => setDrivers((list) => list.map((d) => (d.id === saved.id ? saved : d))),
-            }
-          }
+          onOpen={(driver) => setOpen({ id: driver.id, form: false })}
         />
       )}
+      {drivers && tab === "shifts" && (
+        drivers.length === 0 ? (
+          <div className="empty-state">
+            <p>No drivers yet.</p>
+            <p className="muted">Add drivers on the Drivers tab, then set their shifts here.</p>
+          </div>
+        ) : (
+          <div className="stack">
+            <ShiftSchedule drivers={drivers} from={from} to={to} editing={editShifts} edit={edit} />
+            <ShiftStatus
+              editing={editShifts}
+              saver={saver}
+              empty={drivers.every((d) => d.shifts.length === 0)}
+              emptyText="No shifts yet. Right-click a day (or press and hold on a phone) to add one."
+            />
+          </div>
+        )
+      )}
 
+      {/* The driver modal: their profile, or the details form */}
       <Modal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        title={editing?.driver ? `Edit ${editing.driver.name}` : "Add driver"}
+        open={open !== null && (open.id === null || Boolean(openDriver))}
+        onClose={() => setOpen(null)}
+        wide={!open?.form}
+        className={open?.form ? "" : "modal-profile"}
+        title={
+          open?.id === null ? "Add driver"
+          : open?.form ? `Edit ${openDriver?.name}`
+          : openDriver && <ProfileHeader driver={openDriver} onEdit={() => setOpen({ id: open.id, form: true, back: true })} />
+        }
       >
-        {editing && (
+        {open?.form && (
           <DriverForm
             // Fresh form state each time it opens.
-            key={editing.driver?.id ?? "new"}
-            driver={editing.driver}
+            key={open.id ?? "new"}
+            driver={openDriver}
             drivers={drivers}
             colors={colors}
-            onCancel={() => setEditing(null)}
+            onCancel={() => setOpen(open.back ? { id: open.id, form: false } : null)}
             onSaved={() => {
-              setEditing(null);
+              setOpen(open.back ? { id: open.id, form: false } : null);
               load();
             }}
+          />
+        )}
+        {open && !open.form && openDriver && (
+          <DriverProfile
+            key={openDriver.id}
+            driver={openDriver}
+            from={from}
+            to={to}
+            onSaved={replaceDriver}
+            onRemove={() => setRemoving(openDriver)}
+            onClose={() => setOpen(null)}
           />
         )}
       </Modal>
@@ -164,6 +200,7 @@ export default function DriversPage() {
             // Already gone (e.g. removed in another tab): that's the outcome we wanted.
             if (err.status !== 404) throw err;
           }
+          setOpen(null);
           await load();
         }}
       >

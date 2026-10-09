@@ -6,12 +6,16 @@ Like ride status, this is worked out from the clock rather than by a job:
     morning. (Before 8 AM, yesterday's rides are still on the main list.)
   - Archived rides are kept for ARCHIVE_RETENTION_DAYS (default 90), then
     deleted by purge_expired(), which the API calls as pages load.
+  - Before rides are deleted, each driver's count of them is added to
+    Driver.purged_rides, so all-time counts survive (rides/metrics.py).
   - Drivers' last GPS fix is deleted after a day by the same cleanup.
 """
 
 from datetime import timedelta
 
 from django.conf import settings
+from django.db import transaction
+from django.db.models import Count, F
 from django.utils import timezone
 
 ARCHIVE_HOUR = 8  # local time the previous day's rides move to the archive
@@ -43,9 +47,17 @@ LOCATION_RETENTION = timedelta(days=1)
 def purge_expired(now=None):
     """Delete rides past the retention window, and stale driver locations.
     Cheap: indexed DELETEs, run as pages load. Returns rides deleted."""
+    from accounts.models import Driver
+
+    from .metrics import counted
     from .models import DriverLocation, Ride
 
     now = now or timezone.now()
-    deleted, _ = Ride.objects.filter(pickup_time__date__lt=purge_before(now)).delete()
+    expired = Ride.objects.filter(pickup_time__date__lt=purge_before(now))
+    with transaction.atomic():
+        counts = counted(expired, now).filter(driver__isnull=False).values("driver").annotate(n=Count("id"))
+        for row in counts:
+            Driver.objects.filter(pk=row["driver"]).update(purged_rides=F("purged_rides") + row["n"])
+        deleted, _ = expired.delete()
     DriverLocation.objects.filter(updated_at__lt=now - LOCATION_RETENTION).delete()
     return deleted

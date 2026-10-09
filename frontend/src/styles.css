@@ -669,11 +669,6 @@ select {
   }
   .table td.col-actions { width: auto; justify-content: flex-end; padding-top: 0.4rem; }
   .unassigned.open .table-wrap { padding-top: 0.6rem; }
-  /* Shift timelines keep their own layout inside the phone cards */
-  .table tbody tr.has-shifts { margin-bottom: 0; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; }
-  .table tbody tr.shift-row { border-top: 1px dashed var(--border); border-radius: 0 0 var(--radius) var(--radius); padding-top: 0.6rem; }
-  .table tr.has-shifts + .shift-row td { border-top: 0; }
-  .table td.shift-row-cell, .shift-row td { display: block; padding: 0; }
   .ride-table td.email { overflow-wrap: anywhere; }
   .ride-table td.notes-cell.empty { display: none; } /* no notes: no empty "Notes" line on the card */
   /* An open notes row joins the card above it. */
@@ -792,52 +787,115 @@ select {
   .mobile-column :is(button, .button, .button-quiet, a.call-circle):active { transform: none; }
 }
 
-/* ---------- Driver shifts (Drivers page → Show shifts) ---------- */
-:root {
-  /* One color per weekday; all pass AA with white text. */
-  --day-0: #1F5FA6; /* Mon */
-  --day-1: #0B7A6F; /* Tue */
-  --day-2: #7A5BA8; /* Wed */
-  --day-3: #B5531C; /* Thu */
-  --day-4: #A3365A; /* Fri */
+/* ---------- Driver shifts ---------- */
+/* Drivers | Shifts tabs */
+.page-tabs { width: 16rem; max-width: 100%; }
+
+/* Driver rows open the driver modal */
+.clickable-row { cursor: pointer; }
+.link-button {
+  padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left;
 }
-.day-0 { background: var(--day-0); } .day-1 { background: var(--day-1); } .day-2 { background: var(--day-2); }
-.day-3 { background: var(--day-3); } .day-4 { background: var(--day-4); }
+.link-button:hover { text-decoration: underline; }
 
-.table tr.has-shifts td { border-bottom: 0; }
-.shift-row td { padding: 0.75rem 0.9rem 1rem; }
-/* Divider between the driver's details and their shifts */
-.table tr.has-shifts + .shift-row td { border-top: 1px dashed var(--border); }
+/* Driver modal */
+dialog.modal.modal-profile { width: min(780px, calc(100vw - 2rem)); }
+.driver-profile { gap: 1rem; }
+.modal-title:has(.profile-head) { margin: -0.4rem -0.6rem 0.75rem; }
+.profile-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; width: 100%;
+  padding: 0.4rem 0.6rem; border: 1px solid transparent; border-radius: var(--radius);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.profile-head:hover, .profile-head:focus-visible { background: var(--bg); border-color: var(--border); outline: none; }
+.profile-head .swatch { width: 1rem; height: 1rem; margin-right: -0.6rem; flex: none; }
+.profile-name { font-size: 1.25rem; font-weight: 800; color: var(--accent); }
+.profile-detail { font-size: 0.9rem; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
+.profile-edit-hint {
+  margin-left: auto; font-size: 0.85rem; font-weight: 700; color: var(--accent);
+  opacity: 0; transition: opacity 0.15s;
+}
+.profile-head:hover .profile-edit-hint, .profile-head:focus-visible .profile-edit-hint { opacity: 1; }
+.stat-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.stat-tile {
+  display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0 0.4rem;
+  padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg);
+}
+.stat-label { grid-column: 1 / -1; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat-unit { color: var(--muted); font-weight: 600; }
+.profile-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.25rem; }
+.profile-section-head h3 { margin: 0; font-size: 1rem; }
 
-.driver-shifts { display: flex; flex-direction: column; gap: 0.5rem; }
+/* Time ruler: hour labels over tall ticks, short ticks on the half hour */
+.time-ruler { position: relative; height: 1.6rem; }
+.ruler-tick { position: absolute; bottom: 0; height: 0.45rem; border-left: 1px solid var(--muted); }
+.ruler-tick.half { height: 0.25rem; border-left-color: #A9B3BA; }
+.ruler-label {
+  position: absolute; bottom: 0.55rem; transform: translateX(-50%);
+  font-size: 0.7rem; font-weight: 700; color: var(--muted); white-space: nowrap;
+}
+.ruler-label.first { transform: none; }
+.ruler-label.last { transform: translateX(-100%); }
 
-/* Timeline: day labels, then a white lane per day */
+/* One driver's week (driver modal): day labels, then a white lane per day */
 .shift-timeline { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr); }
 .shift-day { align-self: center; font-size: 0.72rem; font-weight: 700; color: var(--muted); }
 .shift-lane {
   position: relative; height: 1.75rem; background-color: var(--white);
   border: 1px solid var(--border); border-top: 0;
 }
-.shift-lane:first-of-type { border-top: 1px solid var(--border); }
+.time-ruler + .shift-day + .shift-lane { border-top: 1px solid var(--border); }
 /* Lines inside the lanes: solid every hour, dotted every half hour */
 .grid-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid #E2E6EA; pointer-events: none; }
 .grid-line.half { border-left: 1px dotted #C9D0D6; }
 .shift-block {
   position: absolute; top: 3px; bottom: 3px; padding: 0 4px; border: 0; border-radius: 4px;
   display: flex; align-items: center; justify-content: center; overflow: hidden;
-  color: var(--white); font: inherit; font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); /* keeps light colors visible on white */
+  font: inherit; font-size: 0.72rem; font-weight: 700; white-space: nowrap;
 }
 .shift-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.shift-time { font-weight: 600; opacity: 0.85; }
+
+/* Everyone's week (Shifts tab): a row per driver on shift, stacked per day */
+.shift-schedule { display: flex; flex-direction: column; }
+.schedule-head {
+  position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr);
+  padding-top: 0.25rem; background: var(--bg);
+}
+.schedule-day {
+  display: grid; grid-template-columns: 4.5rem minmax(0, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+.schedule-head + .schedule-day .schedule-rows { border-top: 1px solid var(--border); }
+.schedule-day-label { align-self: center; justify-self: center; font-size: 0.85rem; color: var(--text); }
+.schedule-rows {
+  position: relative; padding: 0.3rem 0; display: flex; flex-direction: column; gap: 0.2rem;
+  background: var(--white); border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+.schedule-rows .shift-lane { height: 1.9rem; border: 0; background: none; }
+.schedule-rows .shift-block { font-size: 0.78rem; }
+.schedule-empty { display: flex; align-items: center; justify-content: center; }
+.schedule-empty-text { position: relative; z-index: 1; font-size: 0.78rem; font-weight: 700; color: var(--danger); }
+/* Nobody on shift: hatched, across every row of the day */
+.shift-gap {
+  position: absolute; top: 0; bottom: 0; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, rgba(196, 52, 36, 0.13) 0 5px, transparent 5px 10px);
+  border-left: 1px solid rgba(196, 52, 36, 0.35); border-right: 1px solid rgba(196, 52, 36, 0.35);
+}
+
 /* Edit shifts on: a shift shows its outline and grab handles when pointed
    at or clicked (any shift can be dragged either way) */
-.shift-timeline.editing .shift-lane { cursor: context-menu; }
-.shift-timeline.editing .shift-block { cursor: grab; touch-action: none; user-select: none; padding: 0 12px; }
-.shift-timeline.editing .shift-block:hover { box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--highlight); }
-.shift-timeline.editing .shift-block:active { cursor: grabbing; }
+:is(.shift-timeline, .shift-schedule).editing .shift-lane { cursor: context-menu; }
+:is(.shift-timeline, .shift-schedule).editing .shift-block { cursor: grab; touch-action: none; user-select: none; padding: 0 12px; }
+:is(.shift-timeline, .shift-schedule).editing .shift-block:hover { box-shadow: 0 0 0 2px var(--white), 0 0 0 3.5px var(--highlight); }
+:is(.shift-timeline, .shift-schedule).editing .shift-block:active { cursor: grabbing; }
 .shift-block:focus-visible { outline: none; }
 /* The highlighted (clicked) shift stands out more */
-.shift-timeline.editing .shift-block.selected {
-  z-index: 1; box-shadow: 0 0 0 2px var(--white), 0 0 0 5px var(--highlight), 0 3px 8px rgba(0, 0, 0, 0.3);
+:is(.shift-timeline, .shift-schedule).editing .shift-block.selected {
+  z-index: 2; box-shadow: 0 0 0 2px var(--white), 0 0 0 5px var(--highlight), 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 .shift-handle { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; touch-action: none; opacity: 0; transition: opacity 0.12s; }
 .shift-block:hover .shift-handle, .shift-block.selected .shift-handle, .shift-block:focus-visible .shift-handle { opacity: 1; }
@@ -845,25 +903,33 @@ select {
 .shift-handle.end { right: 0; }
 .shift-handle::after {
   content: ""; position: absolute; top: 22%; bottom: 22%; left: 50%; width: 3px; transform: translateX(-50%);
-  border-radius: 2px; background: rgba(255, 255, 255, 0.85);
+  border-radius: 2px; background: currentColor; opacity: 0.75;
 }
 .shift-status { min-height: 1.2em; }
+
 /* Right-click (or press-and-hold) menu */
 .shift-menu {
-  position: fixed; z-index: 50; min-width: 9rem; padding: 0.3rem; transform: translate(2px, 2px);
+  position: fixed; z-index: 50; min-width: 9rem; max-width: 16rem; padding: 0.3rem; transform: translate(2px, 2px);
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .shift-menu button {
-  display: block; width: 100%; padding: 0.5rem 0.7rem; border: 0; border-radius: 6px; background: none;
-  color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.45rem 0.7rem; border: 0; border-radius: 6px;
+  background: none; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer;
 }
-.shift-menu button:hover, .shift-menu button:focus-visible { background: var(--bg); outline: none; }
+.shift-menu button:hover:not(:disabled), .shift-menu button:focus-visible { background: var(--bg); outline: none; }
+.shift-menu button:disabled { color: var(--muted); opacity: 0.55; cursor: default; }
 .shift-menu button.danger { color: var(--danger); }
+.shift-menu .swatch { width: 0.75rem; height: 0.75rem; flex: none; }
+.shift-menu-list button, .shift-menu > button { white-space: nowrap; }
+.shift-menu-heading { margin: 0; padding: 0.3rem 0.7rem 0.2rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.shift-menu-divider { margin: 0.2rem 0.4rem; border: 0; border-top: 1px solid var(--border); }
+.shift-menu-list { max-height: 14rem; overflow-y: auto; }
 
 /* Edit shifts switch */
 .switch { position: relative; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch:has(input:disabled) { opacity: 0.5; cursor: default; }
 .switch-track {
   position: relative; width: 2.5rem; height: 1.4rem; flex: none; border-radius: 999px;
   background: var(--ucsb-gray-light); transition: background 0.2s;
@@ -876,43 +942,21 @@ select {
 .switch input:checked + .switch-track::after { transform: translateX(1.1rem); }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-
 /* Rides table: small tag when a ride is outside its driver's shifts */
 .off-shift {
   margin-left: 0.4rem; padding: 0 0.35rem; border: 1px solid var(--border); border-radius: 999px;
   font-size: 0.66rem; font-weight: 700; color: var(--muted); white-space: nowrap; vertical-align: 0.1em;
 }
 
-/* Show shifts + the Edit shifts switch that slides out of it */
-.shift-controls {
-  display: inline-flex; align-items: stretch; overflow: hidden;
-  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
-  transition: border-color 0.2s;
-}
-.shift-controls.on { border-color: var(--accent); }
-.shift-toggle {
-  padding: 0.4rem 0.85rem; border: 0; background: var(--surface); color: var(--accent);
-  font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.2s, color 0.2s;
-}
-.shift-controls.on .shift-toggle { background: var(--accent); color: var(--white); }
-.shift-toggle:focus-visible { outline: 2px solid var(--highlight); outline-offset: -2px; }
-.shift-edit-slide { display: grid; grid-template-columns: 0fr; transition: grid-template-columns 0.3s ease; }
-.shift-controls.on .shift-edit-slide { grid-template-columns: 1fr; }
-.shift-edit-slide .switch { min-width: 0; overflow: hidden; padding: 0; transition: padding 0.3s ease; }
-.shift-controls.on .shift-edit-slide .switch { padding: 0 0.85rem; }
-@media (prefers-reduced-motion: reduce) {
-  .shift-edit-slide, .shift-edit-slide .switch, .shift-toggle { transition: none; }
-}
-@media (max-width: 760px) {
-  .shift-controls { align-self: stretch; }
-  .shift-toggle { flex: 1; padding: 0.6rem 0.85rem; }
-}
-
 /* Phones: bigger shifts, easier to read and grab */
 @media (max-width: 760px) {
-  .shift-lane { height: 2.4rem; }
+  .page-tabs { width: 100%; }
+  .ruler-label.odd { display: none; } /* every other hour, so the labels fit */
+  .shift-lane, .schedule-rows .shift-lane { height: 2.4rem; }
   .shift-block { top: 4px; bottom: 4px; font-size: 0.8rem; }
-  .shift-timeline.editing .shift-block { padding: 0 14px; }
+  :is(.shift-timeline, .shift-schedule).editing .shift-block { padding: 0 14px; }
   .shift-handle { width: 14px; }
+  .schedule-head, .schedule-day { grid-template-columns: 3rem minmax(0, 1fr); }
+  .stat-value { font-size: 1.5rem; }
+  .profile-edit-hint { opacity: 1; } /* no hover on phones */
 }
-.table tbody tr.shift-row:hover { background: none; } /* no hover tint while dragging shifts */
