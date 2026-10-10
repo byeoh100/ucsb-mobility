@@ -1086,3 +1086,14 @@ dialog.modal.modal-import { width: min(1100px, calc(100vw - 2rem)); }
   .import-table, .import-table tbody, .import-table tr, .import-table td { display: revert; }
   .import-table thead { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
 }
+/* "8 errors  ‹ 3 of 8 ›": arrows step through the rows still blocked */
+.import-errors { display: flex; align-items: center; gap: 0.5rem; }
+.import-errors-title { font-weight: 800; color: var(--danger); margin-right: 0.25rem; }
+.import-errors .stepper-button {
+  padding: 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+  font-size: 1.1rem; line-height: 1.2; cursor: pointer;
+}
+.import-errors .stepper-button:hover { border-color: var(--danger); }
+.import-errors-count { min-width: 4.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); }
+@keyframes import-flash { from { background: var(--notice-bg); } to { background: transparent; } }
+.import-flash td { animation: import-flash 1.6s ease-out; }

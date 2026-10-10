@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formApi } from "../../api.js";
 import { formatPhone } from "../../lib/phone.js";
 import { formatDayLabel, shiftDate } from "../../lib/time.js";
@@ -52,6 +52,40 @@ export default function FormImport({ today, onDone, onClose }) {
   };
 
   const slots = preview?.slots ?? [];
+  // Slots still blocked by a problem, for the Errors list above the table.
+  const errors = slots.filter((s) => problemsOf(s).length > 0);
+  const tableRef = useRef(null);
+  const [flash, setFlash] = useState(null); // key of the row just jumped to
+  const [at, setAt] = useState(null); // key of the error the arrows are on
+  const current = errors.findIndex((s) => s.key === at);
+
+  // ‹ › : the previous/next error (wrapping around). After fixing one, "next"
+  // goes to the one that followed it.
+  function step(by) {
+    if (!errors.length) return;
+    let i;
+    if (current >= 0) i = (current + by + errors.length) % errors.length;
+    else {
+      // The error we were on was fixed: carry on from where it was in the list.
+      const order = slots.map((s) => s.key);
+      const from = at ? order.indexOf(at) : -1;
+      const after = errors.findIndex((s) => order.indexOf(s.key) > from);
+      i = by > 0 ? (after >= 0 ? after : 0) : (after > 0 ? after - 1 : errors.length - 1);
+    }
+    setAt(errors[i].key);
+    jumpTo(errors[i].key);
+  }
+
+  // Scroll the table to a slot's row, highlight it briefly, and put the
+  // cursor in its pickup box if the locations need typing.
+  function jumpTo(key) {
+    const row = tableRef.current?.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.querySelector(".import-input")?.focus({ preventScroll: true });
+    setFlash(key);
+    setTimeout(() => setFlash((k) => (k === key ? null : k)), 1600);
+  }
   const included = slots.filter((s) => chosen[s.key] && problemsOf(s).length === 0);
   const rideCount = included.reduce((n, s) => n + s.new_rides, 0);
 
@@ -137,10 +171,31 @@ export default function FormImport({ today, onDone, onClose }) {
           {preview.older.map((o) => `${o.rider_name || "(no name)"} (row ${o.row})`).join(", ")}.
         </p>
       )}
+      {errors.length > 0 && (
+        <div className="import-errors" role="group" aria-label="Errors">
+          <span className="import-errors-title">
+            {errors.length} {errors.length === 1 ? "error" : "errors"}
+          </span>
+          <button
+            type="button"
+            className="stepper-button"
+            aria-label="Previous error"
+            onClick={() => step(-1)}
+          >
+            ‹
+          </button>
+          <span className="import-errors-count" aria-live="polite">
+            {current >= 0 ? `${current + 1} of ${errors.length}` : `– of ${errors.length}`}
+          </span>
+          <button type="button" className="stepper-button" aria-label="Next error" onClick={() => step(1)}>
+            ›
+          </button>
+        </div>
+      )}
       {slots.length === 0 ? (
         <p className="muted">No rides found in this sheet.</p>
       ) : (
-        <div className="table-wrap import-table-wrap">
+        <div className="table-wrap import-table-wrap" ref={tableRef}>
           <table className="table import-table">
             <thead>
               <tr>
@@ -167,7 +222,11 @@ export default function FormImport({ today, onDone, onClose }) {
                   const locationFix = Boolean(s.location_problem);
                   const blocked = problems.length > 0 || s.new_rides === 0;
                   return (
-                    <tr key={s.key} className={blocked ? "import-blocked" : undefined}>
+                    <tr
+                      key={s.key}
+                      data-key={s.key}
+                      className={[blocked && "import-blocked", flash === s.key && "import-flash"].filter(Boolean).join(" ") || undefined}
+                    >
                       <td>
                         <input
                           type="checkbox"
