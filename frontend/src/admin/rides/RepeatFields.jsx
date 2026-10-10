@@ -5,14 +5,15 @@ import { shiftDate } from "../../lib/time.js";
 //
 // Props:
 //   start     "YYYY-MM-DD", the first ride's date
-//   days      [0..6], Monday = 0 (the server's numbering)
+//   days      [0..4], Monday = 0 (the server's numbering); weekdays only
 //   until     "YYYY-MM-DD" or ""
 //   onChange  ({ days, until }) => void
 //   error     message to show, if any
 
 export const MAX_SPAN_DAYS = 120; // keep in step with rides/recurrence.py
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+// Rides repeat on weekdays only (no service on weekends).
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 // Monday = 0 ... Sunday = 6
 export function weekdayOf(isoDate) {

@@ -27,7 +27,11 @@ def pin(x, y):
 class RepeatSerializer(serializers.Serializer):
     """{"days": [0, 2], "until": "2026-12-04"}: Mondays and Wednesdays until Dec 4."""
 
-    days = serializers.ListField(child=serializers.IntegerField(min_value=0, max_value=6), allow_empty=False)
+    # Weekdays only (Monday = 0 ... Friday = 4): no service on weekends.
+    days = serializers.ListField(
+        child=serializers.IntegerField(min_value=0, max_value=4, error_messages={"max_value": "Rides repeat on weekdays only."}),
+        allow_empty=False,
+    )
     until = serializers.DateField()
 
 

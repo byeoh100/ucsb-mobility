@@ -189,7 +189,8 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
                 checked={repeat !== null}
                 onChange={(e) => {
                   // Start with the first ride's weekday, for four weeks.
-                  setRepeat(e.target.checked ? { days: [weekdayOf(date)], until: shiftDate(date, 27) } : null);
+                  // Starts on the ride's own weekday (none picked if that's a weekend).
+                  setRepeat(e.target.checked ? { days: weekdayOf(date) < 5 ? [weekdayOf(date)] : [], until: shiftDate(date, 27) } : null);
                   setErrors(({ repeat: _, ...rest }) => rest);
                 }}
               />

@@ -73,6 +73,10 @@ class RepeatApiTests(TestCase):
         self.assertIn("None of the chosen days", self.add(days=[FRIDAY], until="2026-10-13").json()["repeat"][0])
         self.assertEqual(self.add(days=[]).status_code, 400)
         self.assertEqual(self.add(days=[7]).status_code, 400)
+        for weekend in (5, 6):  # Saturday, Sunday: weekdays only
+            r = self.add(days=[weekend])
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("weekdays only", str(r.json()["repeat"]))
         self.assertEqual(self.add(when="2026-10-12T20:00").status_code, 400)  # outside hours
         self.assertEqual(Ride.objects.count(), 0)  # nothing half-created
 
