@@ -148,7 +148,6 @@ textarea { resize: vertical; min-height: 3.2rem; }
 .table tbody tr:hover { background: var(--bg); }
 .table .strong { font-weight: 600; }
 .table .nowrap { white-space: nowrap; }
-.col-color { width: 4.5rem; }
 .swatch {
   display: inline-block; width: 1.1rem; height: 1.1rem; border-radius: 50%;
   vertical-align: middle; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
@@ -212,16 +211,39 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .button-quiet-danger:hover { border-color: var(--danger); }
 .col-actions .button-quiet + .button-quiet { margin-left: 0.4rem; }
 .modal-actions .actions-left { margin-right: auto; }
+.modal-actions > * { white-space: nowrap; min-height: 3rem; }
+/* Form fields in dialogs: text, date, file and dropdowns all one height */
+.modal :is(input:not([type="checkbox"], [type="radio"], .import-input), select) { height: 2.95rem; }
+.modal input[type="file"] { padding: 0 0.5rem 0 0.4rem; display: flex; align-items: center; }
+.modal input[type="file"]::file-selector-button {
+  font: inherit; font-weight: 600; color: var(--accent); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.7rem; margin-right: 0.75rem; cursor: pointer;
+}
+.modal input[type="file"]::file-selector-button:hover { border-color: var(--accent); }
+/* Phones: with a third button (Delete / Remove / Back), it gets its own row
+   underneath, so no label wraps. */
+@media (max-width: 520px) {
+  .modal-actions:has(.actions-left) { flex-wrap: wrap; }
+  .modal-actions:has(.actions-left) > * { flex: 1 1 0; }
+  .modal-actions .actions-left { order: 1; flex-basis: 100%; margin-right: 0; }
+}
 .confirm-body p { margin: 0 0 0.5rem; }
 .confirm-body p:last-child { margin-bottom: 0; }
 
 /* Rides: date navigation */
 .date-nav { display: flex; align-items: center; gap: 0.5rem; }
-.icon-button { font-size: 1.2rem; line-height: 1; padding: 0.3rem 0.65rem; }
 .date-label { display: flex; flex-direction: column; align-items: center; min-width: 11rem; }
 .date-main { font-weight: 600; }
 .date-relative { font-size: 0.8rem; color: var(--muted); }
-.date-input { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+.date-input { padding: 0 0.5rem; }
+
+/* Page toolbars (date bar, Import / Export, + Add ride, Metrics range): one
+   height for every control in the row. */
+.date-stepper, .date-nav .button-quiet, .date-input, .sheet-actions .button-quiet,
+.page-header .button, .range-presets { height: 2.5rem; }
+.date-nav .button-quiet, .sheet-actions .button-quiet, .page-header .button {
+  display: inline-flex; align-items: center; justify-content: center; padding-block: 0;
+}
 
 /* Rides: table. Fixed layout + shared column widths keep both tables aligned. */
 .ride-table { table-layout: fixed; min-width: 86rem; } /* = fixed columns + 8rem for each place */
@@ -269,7 +291,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 
 /* Ride notes: a ▾ in the Notes column opens a row underneath (empty if none). */
 .notes-toggle {
-  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
+  display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; padding: 0;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
   color: var(--accent); font: inherit; font-size: 0.9rem; line-height: 1; cursor: pointer;
 }
@@ -290,7 +312,10 @@ fieldset.field legend { padding: 0; margin-bottom: 0.5rem; font-weight: 600; }
 .status-completed { background: transparent; color: var(--muted); padding-left: 0; }
 .rider-confirmed { margin-left: 0.4rem; }
 .link-cell { display: inline-flex; align-items: center; gap: 0.5rem; }
-.button-small { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+.button-small {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 1.75rem; padding: 0 0.5rem; font-size: 0.8rem;
+}
 
 /* Rides: unassigned bar */
 .unassigned { display: flex; flex-direction: column; }
@@ -322,7 +347,7 @@ dialog.modal.modal-wide { width: min(620px, calc(100vw - 2rem)); }
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 select {
-  font: inherit; font-weight: 400; padding: 0.6rem 0.75rem; border: 1px solid var(--border);
+  font: inherit; font-weight: 400; padding: 0.65rem 0.75rem; border: 1px solid var(--border);
   border-radius: var(--radius); background: var(--surface); color: var(--text); flex: 1;
 }
 .driver-select { display: flex; align-items: center; gap: 0.6rem; }
@@ -331,7 +356,6 @@ select {
 .driver-select .swatch { width: 1.2rem; height: 1.2rem; flex: none; }
 
 /* Archive */
-.archive-note { margin: 0; }
 .archive-layout { display: grid; grid-template-columns: 12rem 1fr; gap: 1rem; align-items: start; }
 .archive-days {
   display: flex; flex-direction: column; background: var(--surface);
@@ -360,7 +384,6 @@ select {
   font: inherit; font-weight: 600; border: 0; background: none; color: var(--muted);
   padding: 0.6rem; border-radius: 6px; cursor: pointer;
 }
-.segmented button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .segmented button:disabled { opacity: 0.5; cursor: default; }
 
 .day-switch { display: flex; align-items: center; justify-content: space-between; }
@@ -389,7 +412,6 @@ a.call-circle { text-decoration: none; }
 }
 .passenger-tab[aria-selected="true"] { background: var(--success); border-color: var(--success); color: #fff; }
 .passenger-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.passenger-count { text-align: center; }
 .current-empty {
   margin: 0; padding: 0.9rem 1rem; border: 1px dashed var(--border); border-radius: var(--radius); text-align: center;
 }
@@ -399,7 +421,6 @@ a.call-circle { text-decoration: none; }
 .start-next-add .otw-button:hover { background: var(--selected-bg); }
 .ride-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.6rem; }
 .ride-card-time { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ride-card-rider { display: flex; align-items: center; gap: 0.6rem; }
 .ride-card-name { font-size: 1.2rem; font-weight: 600; }
 .confirmed-badge { align-self: flex-start; font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--selected-bg); padding: 0.2rem 0.65rem; border-radius: 999px; }
 /* Rider said they'll be there (👍) or not yet (❌), next to the time */
@@ -476,7 +497,6 @@ a.call-circle { text-decoration: none; }
 .legend-pickup::before { background: var(--success); }
 .legend-dropoff::before { background: var(--danger); }
 .swatch-empty { background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted); }
-.show-map { padding: 0.6rem; }
 
 /* Live location */
 .location-dot {
@@ -574,7 +594,6 @@ a.call-circle { text-decoration: none; }
 /* ---------- Rider-facing polish ---------- */
 .lead { margin: 0.25rem 0 0; }
 .rider-time { color: var(--accent); }
-.rider-day { color: var(--muted); }
 .rider-route { margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
 .rider-route div { display: grid; grid-template-columns: 6.5rem 1fr; align-items: baseline; }
 .rider-route dt { color: var(--muted); font-size: 0.95rem; }
@@ -610,7 +629,7 @@ a.call-circle { text-decoration: none; }
   background: none; color: var(--accent); cursor: pointer;
 }
 .stepper-button:hover { background: var(--bg); }
-.date-stepper .date-label { padding: 0.3rem 0.5rem; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+.date-stepper .date-label { justify-content: center; line-height: 1.15; padding: 0 0.5rem; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 
 /* Day summary under the Rides title */
 .day-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.25rem 0 0; }
@@ -719,7 +738,10 @@ a.call-circle { text-decoration: none; }
 
 /* Icon buttons (copy link) */
 .icon { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; display: block; }
-.icon-only { padding: 0.3rem 0.45rem; line-height: 0; }
+.icon-only {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.75rem; height: 1.75rem; padding: 0; line-height: 0;
+}
 .icon-only.copied { color: var(--success); border-color: var(--success); }
 
 /* Hide completed */
@@ -968,7 +990,7 @@ dialog.modal.modal-profile { width: min(780px, calc(100vw - 2rem)); }
 .range-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
 .range-presets { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 3px; gap: 3px; }
 .range-presets button {
-  padding: 0.35rem 0.85rem; border: 0; border-radius: 6px; background: none; color: var(--accent);
+  padding: 0 0.85rem; border: 0; border-radius: 6px; background: none; color: var(--accent);
   font: inherit; font-weight: 600; cursor: pointer;
 }
 .range-presets button:hover:not(.active) { background: var(--bg); }
@@ -1020,7 +1042,7 @@ dialog.modal.modal-profile { width: min(780px, calc(100vw - 2rem)); }
 /* At a glance: 2 x 2 number tiles */
 .summary-tiles { display: grid; grid-template-columns: repeat(2, minmax(10.5rem, 1fr)); gap: 0.75rem; flex: 1; }
 .summary-tile {
-  display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 0.1rem;
   padding: 0.8rem 1rem; border-radius: var(--radius); background: var(--bg);
 }
 .summary-value { font-size: 1.9rem; font-weight: 800; line-height: 1.15; color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -1092,8 +1114,9 @@ dialog.modal.modal-import { width: min(1100px, calc(100vw - 2rem)); }
 .import-errors { display: flex; align-items: center; gap: 0.5rem; }
 .import-errors-title { font-weight: 800; color: var(--danger); margin-right: 0.25rem; }
 .import-errors .stepper-button {
-  padding: 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
-  font-size: 1.1rem; line-height: 1.2; cursor: pointer;
+  display: inline-grid; place-items: center; width: 2rem; height: 2rem; padding: 0;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  font-size: 1.25rem; line-height: 1; cursor: pointer;
 }
 .import-errors .stepper-button:hover { border-color: var(--danger); }
 .import-errors-count { min-width: 4.5rem; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); }

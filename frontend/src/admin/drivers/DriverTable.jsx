@@ -9,6 +9,7 @@ import { formatTime } from "../../lib/time.js";
 //   drivers   array of { id, name, email, phone, color }
 //   colors    array of { value, label }, used to name each driver's color
 //   onOpen    (driver) => void
+//   timeZone  campus time zone, for pickup times
 export default function DriverTable({ drivers, colors, onOpen, timeZone }) {
   const colorName = Object.fromEntries(colors.map((c) => [c.value, c.label]));
 
@@ -67,9 +68,9 @@ export default function DriverTable({ drivers, colors, onOpen, timeZone }) {
   );
 }
 
-// What the driver is doing right now: their ride that's on the way, and how
-// fresh their location is. The rider link shows where they are on the map.
-// Every ride the driver has on the way (riders can share the cart).
+// What the driver is doing right now: every ride they have on the way (riders
+// can share the cart), and how fresh their location is. Each rider link
+// shows where they are on the map.
 function CurrentRides({ rides, location, timeZone }) {
   if (!rides?.length) return <span className="muted">Not on a ride</span>;
   return (

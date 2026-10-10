@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { formApi } from "../../api.js";
 import { formatPhone } from "../../lib/phone.js";
-import { formatDayLabel, shiftDate } from "../../lib/time.js";
+import { DAYS } from "../../lib/shifts.js";
+import { formatDayLabel, shiftDate, shortDate } from "../../lib/time.js";
+import { MAX_SPAN_DAYS } from "./RepeatFields.jsx";
 
 // Import ride requests from the Google Form's response sheet (.csv).
 //   1. Pick the file and how long the rides repeat.
@@ -13,8 +15,6 @@ import { formatDayLabel, shiftDate } from "../../lib/time.js";
 // Shown inside a Modal by RidesPage. The rules: backend/rides/form_import.py.
 //
 // Props: today ("YYYY-MM-DD"), onDone(), onClose()
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-const MAX_DAYS = 120; // the server's limit on how long a series runs
 
 export default function FormImport({ today, onDone, onClose }) {
   const [file, setFile] = useState(null);
@@ -58,6 +58,8 @@ export default function FormImport({ today, onDone, onClose }) {
   const [flash, setFlash] = useState(null); // key of the row just jumped to
   const [at, setAt] = useState(null); // key of the error the arrows are on
   const current = errors.findIndex((s) => s.key === at);
+  // Shown as "n of N": the error the arrows are on, or else the one › goes to next.
+  const position = current >= 0 ? current + 1 : Math.max(nextIndex(), 0) + 1;
 
   // ‹ › : the previous/next error (wrapping around). After fixing one, "next"
   // goes to the one that followed it.
@@ -66,14 +68,19 @@ export default function FormImport({ today, onDone, onClose }) {
     let i;
     if (current >= 0) i = (current + by + errors.length) % errors.length;
     else {
-      // The error we were on was fixed: carry on from where it was in the list.
-      const order = slots.map((s) => s.key);
-      const from = at ? order.indexOf(at) : -1;
-      const after = errors.findIndex((s) => order.indexOf(s.key) > from);
+      // None picked yet, or the one we were on was fixed: carry on from where it was.
+      const after = nextIndex();
       i = by > 0 ? (after >= 0 ? after : 0) : (after > 0 ? after - 1 : errors.length - 1);
     }
     setAt(errors[i].key);
     jumpTo(errors[i].key);
+  }
+
+  // The first error after the one the arrows were last on (-1 if none).
+  function nextIndex() {
+    const order = slots.map((s) => s.key);
+    const from = at ? order.indexOf(at) : -1;
+    return errors.findIndex((s) => order.indexOf(s.key) > from);
   }
 
   // Scroll the table to a slot's row, highlight it briefly, and put the
@@ -133,10 +140,9 @@ export default function FormImport({ today, onDone, onClose }) {
           <span>Repeat each ride weekly until</span>
           <input
             type="date"
-            className="date-input"
             value={until}
             min={today}
-            max={shiftDate(today, MAX_DAYS)}
+            max={shiftDate(today, MAX_SPAN_DAYS)}
             onChange={(e) => e.target.value && setUntil(e.target.value)}
           />
           <span className="hint">Rides can be ended early from the ride's edit dialog (this and later rides).</span>
@@ -179,7 +185,7 @@ export default function FormImport({ today, onDone, onClose }) {
             ‹
           </button>
           <span className="import-errors-count" aria-live="polite">
-            {current >= 0 ? `${current + 1} of ${errors.length}` : `– of ${errors.length}`}
+            {position} of {errors.length}
           </span>
           <button type="button" className="stepper-button" aria-label="Next error" onClick={() => step(1)}>
             ›
@@ -266,7 +272,7 @@ export default function FormImport({ today, onDone, onClose }) {
                         </>
                       )}
                       <td className="nowrap">
-                        {!s.starts ? "—" : s.lock_in ? `Weekly from ${shortDay(s.starts)}` : `${shortDay(s.starts)} only`}
+                        {!s.starts ? "—" : s.lock_in ? `Weekly from ${shortDate(s.starts)}` : `${shortDate(s.starts)} only`}
                       </td>
                       <td className="nowrap">
                         {s.new_rides > 0 ? s.new_rides : "—"}
@@ -302,6 +308,3 @@ export default function FormImport({ today, onDone, onClose }) {
     </div>
   );
 }
-
-// "2026-10-19" → "Oct 19"
-const shortDay = (iso) => formatDayLabel(iso).replace(/^\w+, /, "");

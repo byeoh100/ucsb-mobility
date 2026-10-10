@@ -44,12 +44,13 @@ class Ride(models.Model):
         "accounts.Driver", null=True, blank=True, on_delete=models.SET_NULL, related_name="rides"
     )
 
-    # Set by the driver tapping "On the way" (driver view, later part).
+    # Set when the driver starts the ride ("Start ride" / "Add to current"),
+    # which puts it in their Current rides; its status becomes "on the way".
     started_at = models.DateTimeField(null=True, blank=True)
     # Set if the driver taps "Mark complete" (optional; otherwise the ride
     # completes on its own; see rides/status.py).
     completed_at = models.DateTimeField(null=True, blank=True)
-    # Set by the rider's thumbs up on their link page (later part).
+    # Set by the rider's 👍 ("I'll be there") on their ride page.
     rider_confirmed_at = models.DateTimeField(null=True, blank=True)
 
     link_token = models.CharField(max_length=32, unique=True, default=new_link_token, editable=False)

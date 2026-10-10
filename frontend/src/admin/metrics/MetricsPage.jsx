@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { statsApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
-import { isValidDate, shiftDate, todayIn } from "../../lib/time.js";
+import { isValidDate, shiftDate, shortDate, todayIn, weekdayOf } from "../../lib/time.js";
 import BarChart from "./BarChart.jsx";
 import RangePicker from "./RangePicker.jsx";
 import RidesRing from "./RidesRing.jsx";
@@ -106,9 +106,6 @@ function PerDay({ stats }) {
   );
 }
 
-const shortDate = (iso, opts = { month: "short", day: "numeric" }) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...opts });
-
 // 7 → "7a", 12 → "12p", 13 → "1p"
 const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? "a" : "p"}`;
 
@@ -129,15 +126,14 @@ function dayBars(byDay) {
     label: i % every === 0 ? (byDay.length <= 7 ? shortDate(date, { weekday: "short" }) : shortDate(date)) : "",
     value: rides,
     detail: shortDate(date, { weekday: "short", month: "short", day: "numeric" }),
-    weekend: [0, 6].includes(new Date(`${date}T12:00:00Z`).getUTCDay()),
+    weekend: weekdayOf(date) >= 5,
   }));
 }
 
 function weekBars(byDay) {
   const weeks = [];
   for (const { date, rides } of byDay) {
-    const d = new Date(`${date}T12:00:00Z`);
-    if (!weeks.length || d.getUTCDay() === 1) weeks.push({ start: date, end: date, rides: 0 });
+    if (!weeks.length || weekdayOf(date) === 0) weeks.push({ start: date, end: date, rides: 0 });
     const week = weeks[weeks.length - 1];
     week.rides += rides;
     week.end = date;

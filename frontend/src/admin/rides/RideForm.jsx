@@ -2,19 +2,12 @@ import { useState } from "react";
 import { ridesApi } from "../../api.js";
 import PhoneInput from "../../components/PhoneInput.jsx";
 import TimeSelect from "../../components/TimeSelect.jsx";
-import RepeatFields, { repeatDates, repeatProblem, weekdayOf } from "./RepeatFields.jsx";
-import { shiftDate } from "../../lib/time.js";
-import { onShift } from "../../lib/shifts.js";
+import RepeatFields, { repeatDates, repeatProblem } from "./RepeatFields.jsx";
+import { longTime, onShift, toMinutes } from "../../lib/shifts.js";
 import { Req, RequiredNote } from "../../components/Required.jsx";
 import { isCompletePhone } from "../../lib/phone.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
-import { campusParts } from "../../lib/time.js";
-
-// "19:00" → "7:00 PM"
-function timeLabel(hhmm) {
-  const [h, m] = hhmm.split(":").map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
-}
+import { campusParts, shiftDate, weekdayOf } from "../../lib/time.js";
 
 // "Add ride", or "Add 6 rides" when repeating.
 function submitLabel(repeat, date) {
@@ -77,7 +70,7 @@ export default function RideForm({ ride, defaultDate, today, drivers, timeZone, 
     if (!date || !time) found.pickup_time = "Enter a date and time.";
     // Hours are only checked when the time changes (like the server), so a ride
     // booked before the hours changed can still be edited, e.g. reassigned.
-    else if (timeChanged && (time < EARLIEST || time > LATEST)) found.pickup_time = `Rides must be between ${timeLabel(EARLIEST)} and ${timeLabel(LATEST)}.`;
+    else if (timeChanged && (time < EARLIEST || time > LATEST)) found.pickup_time = `Rides must be between ${longTime(toMinutes(EARLIEST))} and ${longTime(toMinutes(LATEST))}.`;
     else if (timeChanged && date < today) found.pickup_time = "That date has already passed.";
     if (!pickup.trim()) found.pickup_name = "Enter where to pick them up.";
     if (!dropoff.trim()) found.dropoff_name = "Enter where to drop them off.";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formApi } from "../../api.js";
-import { formatDayLabel, shiftDate } from "../../lib/time.js";
+import { formatDayLabel, shiftDate, weekdayOf } from "../../lib/time.js";
 
 // Download a week's rides (Monday to Friday) as a .csv in the Google Form's
 // response layout: one row per rider, rides in the day slots by time.
@@ -13,8 +13,7 @@ export default function FormExport({ date, onClose }) {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
 
-  const weekday = (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
-  const monday = shiftDate(day, -weekday);
+  const monday = shiftDate(day, -weekdayOf(day));
 
   async function download() {
     setBusy(true);
@@ -38,7 +37,7 @@ export default function FormExport({ date, onClose }) {
     <div className="stack">
       <label className="field">
         <span>Week</span>
-        <input type="date" className="date-input" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} />
+        <input type="date" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} />
         <span className="hint">
           {formatDayLabel(monday)} to {formatDayLabel(shiftDate(monday, 4))}
         </span>

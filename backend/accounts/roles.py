@@ -13,6 +13,11 @@ from .validators import email_domain_allowed, normalize_email
 log = logging.getLogger(__name__)
 
 
+def driver_for(user):
+    """The Driver row for a signed-in user, or None."""
+    return Driver.objects.filter(email=normalize_email(user.email)).first()
+
+
 class Role(TextChoices):
     ADMIN = "admin"
     DRIVER = "driver"

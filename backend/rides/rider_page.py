@@ -14,20 +14,16 @@ Phases, by the clock and the ride's status:
 from django.conf import settings
 from django.utils import timezone
 
+from .models import Ride
+from .serializers import pin
 from .status import COMPLETED, LINK_WINDOW, ON_THE_WAY, status_of, statuses_for
 from .tracking import location_payload
-from .models import Ride
 
 UPCOMING, LIVE, COMPLETE, EXPIRED = "upcoming", "live", "complete", "expired"
 
 
-def ride_status(ride, now):
-    """This ride's status (see status.py)."""
-    return status_of(ride, now)
-
-
 def phase_of(ride, now, status=None):
-    status = status or ride_status(ride, now)
+    status = status or status_of(ride, now)
     if status == COMPLETED:
         return EXPIRED if now >= ride.pickup_time + LINK_WINDOW else COMPLETE
     # Not over yet: live from 20 min before pickup for as long as the ride
@@ -55,13 +51,9 @@ def dropoffs_away(ride, now):
     )
 
 
-def pin(x, y):
-    return {"x": x, "y": y} if x is not None and y is not None else None
-
-
 def page_payload(ride, now=None):
     now = now or timezone.now()
-    status = ride_status(ride, now)
+    status = status_of(ride, now)
     phase = phase_of(ride, now, status)
     payload = {"phase": phase, "dispatch_phone": settings.DISPATCH_PHONE}
     if phase == EXPIRED:

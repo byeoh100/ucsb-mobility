@@ -28,6 +28,16 @@ export function isValidDate(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
+// Monday = 0 ... Sunday = 6 (the server's numbering) for a "YYYY-MM-DD" date.
+export function weekdayOf(isoDate) {
+  return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+// "Oct 19" (or another format via `opts`, e.g. { weekday: "short" } → "Mon")
+export function shortDate(isoDate, opts = { month: "short", day: "numeric" }) {
+  return new Date(`${isoDate}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...opts });
+}
+
 // "Friday, Oct 2"
 export function formatDayLabel(isoDate) {
   return new Date(`${isoDate}T12:00:00Z`).toLocaleDateString("en-US", {

@@ -1,7 +1,7 @@
 """A ride's status, worked out from what happened instead of stored.
 
-    not_confirmed  driver hasn't tapped "On the way" yet
-    on_the_way     driver tapped it
+    not_confirmed  the driver hasn't started it yet (shown to dispatch as "Not started")
+    on_the_way     the driver started it ("Start ride" / "Add to current")
     completed      the driver tapped "Mark complete", OR RIDE_CUTOFF (60 min)
                    past pickup time, a safety net for rides nobody closed
 
@@ -24,7 +24,7 @@ COMPLETED = "completed"
 LINK_WINDOW = timedelta(minutes=20)
 
 # A ride that's late or still under way stays open this long after pickup:
-# a late driver can still tap "On the way", and the rider's link stays live.
+# a late driver can still start it, and the rider's link stays live.
 # Past this, the ride counts as completed even if nobody closed it, so
 # location sharing can't run on forever.
 RIDE_CUTOFF = timedelta(minutes=60)

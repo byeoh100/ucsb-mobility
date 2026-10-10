@@ -1,3 +1,5 @@
+import { shortDate } from "../../lib/time.js";
+
 // "At a glance": four numbers for the range.
 //
 // Props: stats (from /api/stats/), or null while loading
@@ -16,9 +18,7 @@ export default function Summary({ stats }) {
         value={busiest ? busiest.rides : dash}
         note={
           busiest
-            ? new Date(`${busiest.date}T12:00:00Z`).toLocaleDateString("en-US", {
-                timeZone: "UTC", weekday: "short", month: "short", day: "numeric",
-              })
+            ? shortDate(busiest.date, { weekday: "short", month: "short", day: "numeric" })
             : "no rides yet"
         }
       />

@@ -155,7 +155,6 @@ export default function DriversPage() {
               editing={editShifts}
               saver={saver}
               empty={drivers.every((d) => d.shifts.length === 0)}
-              emptyText="No shifts yet. Right-click a day (or press and hold on a phone) to add one."
             />
           </div>
         )

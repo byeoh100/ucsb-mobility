@@ -1,4 +1,4 @@
-"""DRF permission classes for API views in later parts.
+"""DRF permission classes, used by every signed-in API view.
 
     permission_classes = [IsAdmin]           # admin pages
     permission_classes = [IsDriverOrAdmin]   # driver pages (admins see everything)

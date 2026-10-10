@@ -9,9 +9,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.models import Driver
 from accounts.permissions import IsAdmin, IsDriverOrAdmin
-from accounts.validators import normalize_email
+from accounts.roles import driver_for
 
 from .archive import archive_cutoff, is_archived, purge_expired
 from .models import Ride
@@ -21,13 +20,19 @@ from .status import COMPLETED, ON_THE_WAY, statuses_for
 
 
 def parse_date(raw):
+    """A "YYYY-MM-DD" query value. Years far outside the app's life (like
+    9999) are refused too, so date math on them can't overflow."""
     try:
-        return date_type.fromisoformat(raw)
+        day = date_type.fromisoformat(raw)
     except (TypeError, ValueError):
         raise serializers.ValidationError({"date": "Use YYYY-MM-DD."})
+    if not 2000 <= day.year <= 2100:
+        raise serializers.ValidationError({"date": "That date is out of range."})
+    return day
 
 
 def ride_statuses(rides):
+    """Every ride's status, worked out in one pass (see status.py)."""
     return statuses_for(rides, timezone.now())
 
 
@@ -145,16 +150,15 @@ class RideViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def start(self, request, pk=None):
-        """POST /api/rides/<id>/start/: the driver taps "On the way".
-
-        "Set as current" on the driver's screen. A driver can have several
-        rides on the way at once (riders sharing the cart); starting one
-        doesn't end the others.
+        """POST /api/rides/<id>/start/: the driver starts the ride ("Start
+        ride", "Start next ride" or "Add to current"), putting it in their
+        Current rides. A driver can have several rides on the way at once
+        (riders sharing the cart); starting one doesn't end the others.
         """
         ride, problem = self.own_ride_for_today(request)
         if problem:
             return problem
-        current = self.statuses([ride])[ride.id]
+        current = ride_statuses([ride])[ride.id]
         if current == COMPLETED:
             return error("This ride is already completed.")
         if current != ON_THE_WAY:
@@ -164,11 +168,12 @@ class RideViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def unstart(self, request, pk=None):
-        """POST /api/rides/<id>/unstart/: undo a mistaken "On the way"."""
+        """POST /api/rides/<id>/unstart/: take a ride back out of Current
+        (the ✕ on the ride's card), e.g. one started by mistake."""
         ride, problem = self.own_ride_for_today(request)
         if problem:
             return problem
-        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+        if ride_statuses([ride])[ride.id] != ON_THE_WAY:
             return error("Only a ride that's on the way can be undone.")
         ride.started_at = None
         ride.save(update_fields=["started_at", "updated_at"])
@@ -183,7 +188,7 @@ class RideViewSet(viewsets.ModelViewSet):
         ride, problem = self.own_ride_for_today(request)
         if problem:
             return problem
-        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+        if ride_statuses([ride])[ride.id] != ON_THE_WAY:
             return error("Only a ride that's on the way can be marked complete.")
         ride.completed_at = timezone.now()
         ride.save(update_fields=["completed_at", "updated_at"])
@@ -199,7 +204,7 @@ class RideViewSet(viewsets.ModelViewSet):
             return error("This ride wasn't marked complete.")
         ride.completed_at = None
         # Only if it would actually be on the way again (not past the cutoff).
-        if self.statuses([ride])[ride.id] != ON_THE_WAY:
+        if ride_statuses([ride])[ride.id] != ON_THE_WAY:
             return error("This ride can't be reopened anymore.")
         ride.save(update_fields=["completed_at", "updated_at"])
         return Response(self.get_serializer(ride).data)
@@ -207,7 +212,7 @@ class RideViewSet(viewsets.ModelViewSet):
     def own_ride_for_today(self, request):
         """The ride, if it's the signed-in driver's and it's today; else an error."""
         ride = self.get_object()
-        driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+        driver = driver_for(request.user)
         if driver is None or ride.driver_id != driver.id:
             return ride, error("Only the driver assigned to this ride can do that.", status.HTTP_403_FORBIDDEN)
         if timezone.localtime(ride.pickup_time).date() != timezone.localdate():
@@ -226,11 +231,8 @@ class RideViewSet(viewsets.ModelViewSet):
         if instance is not None:
             rides = list(instance) if hasattr(instance, "__iter__") else [instance]
             kwargs.setdefault("context", self.get_serializer_context())
-            kwargs["context"]["statuses"] = self.statuses(rides)
+            kwargs["context"]["statuses"] = ride_statuses(rides)
         return super().get_serializer(*args, **kwargs)
-
-    def statuses(self, rides):
-        return ride_statuses(rides)
 
 
 def viewer_for(request):
@@ -239,7 +241,7 @@ def viewer_for(request):
 
     if get_role(request.user) == Role.ADMIN:
         return {"is_admin": True, "driver_id": None}
-    driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+    driver = driver_for(request.user)
     return {"is_admin": False, "driver_id": driver.id if driver else None}
 
 
@@ -269,7 +271,7 @@ class LocationView(APIView):
         from .models import DriverLocation
         from .tracking import current_rides
 
-        driver = Driver.objects.filter(email=normalize_email(request.user.email)).first()
+        driver = driver_for(request.user)
         if driver is None:
             return error("Only drivers share their location.", status.HTTP_403_FORBIDDEN)
         if not current_rides(driver):
@@ -358,7 +360,7 @@ class FormImportPreviewView(APIView):
     permission_classes = [IsAdmin]
 
     def post(self, request):
-        from .form_import import FormError, check, slots_from_csv
+        from .form_import import FormError, check_all, slots_from_csv
 
         if not isinstance(request.data, dict) or not isinstance(request.data.get("csv"), str):
             return error("Choose the form's response sheet (a .csv file).")
@@ -369,7 +371,7 @@ class FormImportPreviewView(APIView):
             return error(str(err))
         except Exception:  # not CSV at all
             return error("Couldn't read that file. Download the responses from Google Sheets as a .csv.")
-        return Response({"slots": [check(slot, until) for slot in slots]})
+        return Response({"slots": check_all(slots, until)})
 
 
 class FormImportView(APIView):

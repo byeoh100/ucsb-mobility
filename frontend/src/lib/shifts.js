@@ -1,6 +1,8 @@
 // Driver shifts: weekly blocks like { weekday: 0, start: "09:00", end: "13:00" }.
 // Weekday 0 = Monday, matching the server (accounts.models.DriverShift).
 
+import { weekdayOf } from "./time.js";
+
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 export const STEP = 15; // minutes; shifts start and end on the quarter hour
 
@@ -18,11 +20,6 @@ export const shortTime = (minutes) => `${Math.floor(minutes / 60) % 12 || 12}:${
 export const longTime = (minutes) => `${shortTime(minutes)} ${minutes < 720 ? "AM" : "PM"}`;
 
 export const snap = (minutes) => Math.round(minutes / STEP) * STEP;
-
-// Monday = 0 for a "YYYY-MM-DD" date (Saturday/Sunday give 5/6).
-export function weekdayOf(isoDate) {
-  return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
-}
 
 // Is this driver on shift at this campus date and time ("HH:MM")?
 // null when they have no shifts entered at all (nothing to compare against).

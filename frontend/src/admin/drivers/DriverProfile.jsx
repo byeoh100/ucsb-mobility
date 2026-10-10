@@ -53,7 +53,6 @@ export default function DriverProfile({ driver, from, to, onSaved, onRemove, onC
         editing={editing}
         saver={saver}
         empty={driver.shifts.length === 0}
-        emptyText="No shifts yet. Right-click a day (or press and hold on a phone) to add one."
       />
 
       <div className="modal-actions">

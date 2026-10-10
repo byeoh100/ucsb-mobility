@@ -19,8 +19,6 @@ export function AuthProvider({ children }) {
     dispatch_phone: "",
     privacy_contact_email: "",
   });
-  const [error, setError] = useState("");
-
   const applySession = useCallback((data) => {
     setUser(data.user);
     setConfig(data.config);
@@ -29,10 +27,8 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       applySession(await authApi.session());
-      setError("");
-    } catch (err) {
-      setUser(null);
-      setError(err.message);
+    } catch {
+      setUser(null); // can't reach the server: treat as signed out
     }
   }, [applySession]);
 
@@ -58,7 +54,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, config, error, applySession, refresh, signOut }}>
+    <AuthContext.Provider value={{ user, config, applySession, refresh, signOut }}>
       {children}
     </AuthContext.Provider>
   );

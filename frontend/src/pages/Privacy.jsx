@@ -5,7 +5,7 @@ import { formatPhone } from "../lib/phone.js";
 // Public privacy policy (/privacy), linked from Google's consent screen.
 // Written to match what the app actually does; if the app changes, update
 // this page too. Have the program (and UCSB, if required) review the wording.
-const LAST_UPDATED = "October 7, 2026";
+const LAST_UPDATED = "October 10, 2026";
 
 export default function Privacy() {
   const { config } = useAuth();
@@ -36,7 +36,8 @@ export default function Privacy() {
           </li>
           <li>
             <strong>Ride information.</strong> Dispatch enters each rider's name, phone number, UCSB email (optional), pickup
-            time, and pickup and drop-off locations. Eligibility is verified separately, outside this app.
+            time, and pickup and drop-off locations, either by hand or by importing the program's ride request form
+            (including any mobility equipment the rider listed). Eligibility is verified separately, outside this app.
           </li>
           <li>
             <strong>Ride notes (optional).</strong> Anything the rider adds when requesting a ride, such as where to
@@ -46,11 +47,11 @@ export default function Privacy() {
             <strong>Map pins (optional).</strong> Riders may mark their pickup and drop-off spots on the campus map.
           </li>
           <li>
-            <strong>Ride progress.</strong> When a driver starts a ride ("On the way"), when they mark it complete (if
+            <strong>Ride progress.</strong> When a driver starts a ride (it's then "On the way"), when they mark it complete (if
             they do), and whether the rider confirmed they'll be there.
           </li>
           <li>
-            <strong>Driver location.</strong> Only while a driver has a ride marked "On the way", their phone shares its
+            <strong>Driver location.</strong> Only while a driver has a ride on the way, their phone shares its
             GPS position about every 10 seconds, so the rider can see them coming. Only the most recent position is
             kept, and it's deleted within a day. Location is never collected from riders.
           </li>
@@ -72,8 +73,9 @@ export default function Privacy() {
             driver is on, with their position on the campus map.
           </li>
           <li>
-            <strong>Drivers</strong> can see every ride's time, rider name, phone number, locations, and map pins, so
-            they can coordinate. They can only see the progress and notes of their own rides.
+            <strong>Drivers</strong> can see every ride's time, rider name, locations, and map pins, so they can
+            coordinate. Only for their own rides can they see the rider's phone number, email, notes, ride link,
+            and progress.
           </li>
           <li>
             <strong>Anyone with a ride's link</strong> can see that ride's time, locations, and map pins. From 20

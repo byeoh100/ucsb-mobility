@@ -1,7 +1,7 @@
 // "Saving…" / "Saved" / an error, under a shift editor while Edit shifts is on.
 //
-// Props: editing, saver (useShiftSaver), empty (no shifts at all), emptyText
-export default function ShiftStatus({ editing, saver, empty, emptyText }) {
+// Props: editing, saver (useShiftSaver), empty (no shifts at all)
+export default function ShiftStatus({ editing, saver, empty }) {
   if (!editing) return null;
   return (
     <p className="hint shift-status" aria-live="polite">
@@ -12,7 +12,7 @@ export default function ShiftStatus({ editing, saver, empty, emptyText }) {
       ) : saver.status === "saved" ? (
         "Saved"
       ) : empty ? (
-        emptyText
+        "No shifts yet. Right-click a day (or press and hold on a phone) to add one."
       ) : null}
     </p>
   );

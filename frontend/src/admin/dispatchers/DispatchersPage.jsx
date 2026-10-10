@@ -113,7 +113,7 @@ export default function DispatchersPage() {
                   </td>
                   <td className="col-actions">
                     <button
-                      className="button-quiet button-quiet-danger"
+                      className="button-quiet button-small button-quiet-danger"
                       onClick={() => setRemoving(d)}
                       disabled={onlyOne}
                       title={onlyOne ? "Add another dispatcher before removing the last one" : undefined}

@@ -24,8 +24,7 @@ from rides.archive import ARCHIVE_HOUR
 from rides.geo import frontend_calibration
 
 from . import backup
-from .models import Driver
-from .roles import bootstrap_admin, get_role
+from .roles import bootstrap_admin, driver_for, get_role
 from .validators import normalize_email
 
 log = logging.getLogger(__name__)
@@ -67,7 +66,7 @@ def session_payload(request):
 
 
 def driver_profile(user):
-    driver = Driver.objects.filter(email=normalize_email(user.email)).first()
+    driver = driver_for(user)
     return {"id": driver.id, "name": driver.name, "color": driver.color} if driver else None
 
 
@@ -144,11 +143,24 @@ def dev_sign_in(request):
     return JsonResponse(session_payload(request))
 
 
-# Backup sign-in: after this many wrong passwords for a username, that username
-# is locked for LOCKOUT_SECONDS. Counted per username (not per IP), so changing
-# addresses doesn't help a guesser.
+# Backup sign-in lockouts, for LOCKOUT_SECONDS after:
+#   MAX_FAILURES wrong passwords for a username from one address (so someone
+#     guessing from one place can't lock dispatch out everywhere), or
+#   MAX_FAILURES_ANYWHERE for a username from all addresses together (so
+#     guessing from many addresses at once still gets nowhere).
 MAX_FAILURES = 10
+MAX_FAILURES_ANYWHERE = 100
 LOCKOUT_SECONDS = 5 * 60
+
+
+def _count_failure(key):
+    from django.core.cache import cache
+
+    if not cache.add(key, 1, LOCKOUT_SECONDS):  # add is atomic: only the first one sets it
+        try:
+            cache.incr(key)
+        except ValueError:  # expired in between
+            cache.set(key, 1, LOCKOUT_SECONDS)
 
 
 @require_POST
@@ -161,12 +173,17 @@ def backup_sign_in(request):
     if not backup.any_enabled():
         return JsonResponse({"error": "Backup sign-in is turned off."}, status=404)
 
-    failures_key = f"backup-login-failures:{username}"
-    if cache.get(failures_key, 0) >= MAX_FAILURES:
+    from rest_framework.throttling import BaseThrottle
+
+    ip = BaseThrottle().get_ident(request)  # the visitor's address (honours TRUSTED_PROXY_COUNT)
+    here_key = f"backup-login-failures:{username}:{ip}"
+    anywhere_key = f"backup-login-failures:{username}"
+    if cache.get(here_key, 0) >= MAX_FAILURES or cache.get(anywhere_key, 0) >= MAX_FAILURES_ANYWHERE:
         return JsonResponse({"error": "Too many wrong passwords. Try again in a few minutes."}, status=429)
 
     if not backup.enabled(username) or not backup.password_matches(username, data.get("password")):
-        cache.set(failures_key, cache.get(failures_key, 0) + 1, LOCKOUT_SECONDS)
+        _count_failure(here_key)
+        _count_failure(anywhere_key)
         log.warning("Failed backup sign-in for %r", username)
         return JsonResponse({"error": "Wrong username or password."}, status=400)
 
@@ -175,7 +192,7 @@ def backup_sign_in(request):
             {"error": "All driver colors are in use. Free one up on the Drivers page first."}, status=409
         )
 
-    cache.delete(failures_key)
+    cache.delete(here_key)
     email = backup.email_for(username)
     user, created = User.objects.get_or_create(
         username=f"backup-{username}", defaults={"email": email, "first_name": "Backup", "last_name": username}

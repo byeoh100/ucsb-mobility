@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { archiveApi } from "../../api.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { longTime } from "../../lib/shifts.js";
 import { formatDayLabel } from "../../lib/time.js";
 import RideTable from "../rides/RideTable.jsx";
 
@@ -60,7 +61,7 @@ export default function ArchivePage() {
       <div>
         <h1>Archive</h1>
         <p className="muted archive-note">
-          Each day's rides move here at {formatHour(config.archive_hour)} the next morning and are kept for {retention}{" "}
+          Each day's rides move here at {longTime(config.archive_hour * 60)} the next morning and are kept for {retention}{" "}
           days. Archived rides can't be changed.
         </p>
       </div>
@@ -124,9 +125,4 @@ export default function ArchivePage() {
       )}
     </section>
   );
-}
-
-function formatHour(hour) {
-  const h = hour % 12 || 12;
-  return `${h}:00 ${hour < 12 ? "AM" : "PM"}`;
 }

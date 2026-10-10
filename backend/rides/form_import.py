@@ -43,6 +43,16 @@ DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
 LOCK_IN_ANSWER = "Yes. Follow my exact class schedule"
 NO_EQUIPMENT = {"", "no", "none", "n/a", "na", "nope", "no.", "-"}
 
+# Longest answer read from any one cell. Real answers are far shorter; the
+# cap keeps a pasted wall of text from slowing the parsing down.
+MAX_CELL = 500
+
+
+# Spreadsheet apps run a cell starting with one of these as a formula. Rider
+# answers come from a public form, so exported cells that start with one are
+# prefixed with ' (shown as plain text, and stripped again on import).
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
 FORM_HEADERS = [
     'First and Last Name:',
     'Timestamp',
@@ -205,7 +215,6 @@ def read_layout(header):
 
 DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 TIME_RE = re.compile(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp])\.?\s*[Mm]\.?$")
-TIMESTAMP_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$")
 
 
 def parse_date(text):
@@ -228,19 +237,6 @@ def parse_time(text):
         return None
     pm = m[4].lower() == "p"
     return time((hour % 12) + (12 if pm else 0), minute)
-
-
-def parse_timestamp(text):
-    m = TIMESTAMP_RE.match((text or "").strip())
-    if not m:
-        return None
-    try:
-        hour = int(m[4])
-        if m[7]:
-            hour = hour % 12 + (12 if m[7].lower() == "pm" else 0)
-        return datetime(int(m[3]), int(m[1]), int(m[2]), hour, int(m[5]), int(m[6] or 0))
-    except ValueError:
-        return None
 
 
 # Ends of a place name: anything that isn't a letter or digit is trimmed off
@@ -272,7 +268,7 @@ def split_route(text):
         'Storke Tower to Library'
         'Storke Tower / Library'
         'Storke Tower - Library', 'Storke Tower -> Library'"""
-    text = (text or "").strip()
+    text = (text or "").strip()[:MAX_CELL]
     parts = _by_labels(text)
     if parts is None:
         # Only one label ("Pick up Storke Tower to Library"): drop it and
@@ -305,52 +301,74 @@ def _squash(text):
 
 
 def _cell(row, i):
-    return row[i].strip() if i is not None and i < len(row) else ""
+    if i is None or i >= len(row):
+        return ""
+    text = row[i].strip()[:MAX_CELL]
+    # A ' the export put before a would-be formula (see _safe).
+    return text[1:] if text.startswith("'") and text[1:].lstrip().startswith(FORMULA_START) else text
+
+
+def _text(slot, key):
+    """A slot field as clean text (slots come back from the browser, so
+    anything that isn't a string counts as empty)."""
+    value = slot.get(key)
+    return value.replace("\r\n", "\n").strip()[:MAX_CELL] if isinstance(value, str) else ""
 
 
 def plan_slot(slot, until, today=None):
     """Check one slot and work out its rides. Returns (fields, dates, problems,
-    warnings): fields for create_series (pickup_time on the first date), the
-    dates it repeats on, and what's wrong (problems block importing it)."""
+    warnings, (phone, time)): fields for create_series (pickup_time on the
+    first date), the dates it repeats on, what's wrong (problems block
+    importing it), and the phone and time when those are readable (so rides
+    already scheduled can be found even while something else is wrong)."""
     today = today or timezone.localdate()
     problems, warnings = [], []
 
-    name = (slot.get("rider_name") or "").strip()
+    name = _text(slot, "rider_name")
     if not name:
         problems.append("No name.")
+    elif len(name) > 120:
+        problems.append("The name is too long (120 characters at most).")
     try:
-        phone = normalize_phone(slot.get("rider_phone") or "")
+        phone = normalize_phone(_text(slot, "rider_phone"))
     except ValidationError:
         phone = ""
         problems.append("Phone number isn't 10 digits.")
-    email = normalize_email(slot.get("rider_email"))
+    email = normalize_email(_text(slot, "rider_email"))
     if email:
         try:
+            if len(email) > 254:
+                raise ValidationError("too long")
             validate_rider_email(email)
         except ValidationError:
             warnings.append(f"Not a UCSB email, left off: {email}")
             email = ""
 
-    pickup = (slot.get("pickup") or "").strip()
-    dropoff = (slot.get("dropoff") or "").strip()
+    pickup, dropoff = _text(slot, "pickup"), _text(slot, "dropoff")
     if not pickup or not dropoff:
         problems.append(location_problem(slot))
     elif len(pickup) > 120 or len(dropoff) > 120:
         problems.append("A location name is too long (120 characters at most).")
 
-    at = parse_time(slot.get("time") or "") if slot.get("time") else None
+    time_text = _text(slot, "time")
+    at = parse_time(time_text) if time_text else None
     if at is None:
-        problems.append("No time entered." if not slot.get("time") else f'Could not parse: "{slot["time"]}"')
+        problems.append(f'Could not parse: "{time_text}"' if time_text else "No time entered.")
     elif not (service_hours.start() <= at <= service_hours.end()):
-        problems.append(f"{at.hour % 12 or 12}:{at.minute:02d} {'AM' if at.hour < 12 else 'PM'} is outside hours of operation.")
+        problems.append(f"{service_hours.label(at)} is outside hours of operation.")
 
     weekday = slot["weekday"]
-    given = date.fromisoformat(slot["first_date"]) if slot.get("first_date") else None
-    if slot.get("bad_date"):
-        problems.append(f'Could not parse: "{slot["bad_date"]}"')
-    if slot.get("also_in_rows"):
-        rows = ", ".join(str(r) for r in slot["also_in_rows"])
-        warnings.append(f"Also in row{'s' if len(slot['also_in_rows']) > 1 else ''} {rows}; using the earliest start.")
+    unreadable_date = _text(slot, "bad_date")
+    try:
+        given = date.fromisoformat(_text(slot, "first_date")) if _text(slot, "first_date") else None
+    except ValueError:
+        given, unreadable_date = None, _text(slot, "first_date")
+    if unreadable_date:
+        problems.append(f'Could not parse: "{unreadable_date}"')
+    also = [r for r in slot.get("also_in_rows") or [] if isinstance(r, int)] if isinstance(slot.get("also_in_rows"), list) else []
+    if also:
+        rows = ", ".join(str(r) for r in also)
+        warnings.append(f"Also in row{'s' if len(also) > 1 else ''} {rows}; using the earliest start.")
     if slot.get("lock_in"):
         # LOCK-IN: weekly on this weekday, from the given date (or today).
         if given and given.weekday() != weekday:
@@ -363,16 +381,21 @@ def plan_slot(slot, until, today=None):
     else:
         # Not LOCK-IN: one ride, on the date given.
         dates = []
-        if given is None and not slot.get("bad_date"):
-            problems.append("No date entered (and not LOCK-IN, so it doesn't repeat).")
-        elif given and given < today:
+        if given is None:
+            if not unreadable_date:
+                problems.append("No date entered (and not LOCK-IN, so it doesn't repeat).")
+        elif given < today:
             problems.append(f"{_date_text(given)} has already passed.")
-        elif given:
+        elif given.weekday() >= 5:
+            problems.append(f"{_date_text(given)} is a {given:%A} (rides are weekdays only).")
+        elif given > today + timedelta(days=365):
+            problems.append(f"{_date_text(given)} is more than a year away.")
+        else:
             dates = [given]
             if given.weekday() != weekday:
                 warnings.append(f"{_date_text(given)} is a {given:%A}, not a {DAYS[weekday].title()}.")
 
-    notes = (slot.get("notes") or "").strip()[:1000]
+    notes = _text(slot, "notes")[:1000]
     fields = None
     if not problems:
         fields = {
@@ -380,12 +403,12 @@ def plan_slot(slot, until, today=None):
             "pickup_name": pickup, "dropoff_name": dropoff, "notes": notes,
             "pickup_time": timezone.make_aware(datetime.combine(dates[0], at)),
         }
-    return fields, dates, problems, warnings
+    return fields, dates, problems, warnings, (phone, at) if phone and at else None
 
 
 def location_problem(slot):
     """What the preview says when a location couldn't be split in two."""
-    text = (slot.get("location") or "").strip()
+    text = _text(slot, "location")
     return f'Could not parse: "{text}"' if text else "No location entered."
 
 
@@ -487,20 +510,43 @@ def _merge_repeats(slots):
     return sorted(kept, key=lambda s: (s["row"], s["weekday"], s["slot"]))
 
 
-def check(slot, until, today=None):
-    """The slot with what the preview shows: rides it adds, ones already there,
-    problems and warnings."""
-    fields, dates, problems, warnings = plan_slot(slot, until, today)
-    existing = _existing(fields["rider_phone"], dates, timezone.localtime(fields["pickup_time"]).time()) if fields else []
-    return {
-        **slot,
-        "problems": problems,
-        "location_problem": location_problem(slot) if location_problem(slot) in problems else None,
-        "warnings": warnings,
-        "starts": dates[0].isoformat() if dates else None,
-        "new_rides": len(dates) - len(existing),
-        "existing_rides": len(existing),
-    }
+def check_all(slots, until, today=None):
+    """Each slot with what the preview shows: rides it adds, ones already
+    scheduled, problems and warnings. Rides an earlier slot in the sheet
+    already adds (same phone and time) aren't counted again, so the preview's
+    numbers match what importing creates."""
+    claimed = set()  # (phone, pickup time) added by earlier slots
+    checked = []
+    for slot in slots:
+        _, dates, problems, warnings, key = plan_slot(slot, until, today)
+        new, existing, repeated = dates, [], []
+        if key and dates:
+            phone, at = key
+            existing = _existing(phone, dates, at)
+            repeated = [d for d in dates if d not in existing and (phone, _at(d, at)) in claimed]
+            new = [d for d in dates if d not in existing and d not in repeated]
+            # Everything's already scheduled: a location that still needs
+            # typing in doesn't matter any more.
+            if not new and location_problem(slot) in problems:
+                problems.remove(location_problem(slot))
+            if not problems:
+                claimed |= {(phone, _at(d, at)) for d in new}
+        if repeated:
+            warnings.append(f"{len(repeated)} of its rides are also in an earlier row.")
+        checked.append({
+            **slot,
+            "problems": problems,
+            "location_problem": location_problem(slot) if location_problem(slot) in problems else None,
+            "warnings": warnings,
+            "starts": dates[0].isoformat() if dates else None,
+            "new_rides": len(new),
+            "existing_rides": len(existing),
+        })
+    return checked
+
+
+def _at(day, at):
+    return timezone.make_aware(datetime.combine(day, at))
 
 
 def import_slots(slots, until, today=None):
@@ -512,7 +558,7 @@ def import_slots(slots, until, today=None):
     created = series = 0
     skipped = []
     for slot in slots:
-        fields, dates, problems, _ = plan_slot(slot, until, today)
+        fields, dates, problems, _, _ = plan_slot(slot, until, today)
         if problems:
             skipped.append({"key": slot.get("key"), "reason": problems[0]})
             continue
@@ -554,10 +600,19 @@ def _split_mobility(notes):
     return "", (notes or "").strip()
 
 
+def _safe(value):
+    text = str(value or "")
+    return "'" + text if text.lstrip().startswith(FORMULA_START) else text
+
+
 def export_week(monday):
-    """The week's rides (Monday to Friday) as the form's response sheet: one
-    row per rider, their rides in the day slots in time order. Returns
-    (csv_text, rides_left_out) — a day has at most 4 or 5 slots."""
+    """The week's rides (Monday to Friday) as the form's response sheet, in
+    time order in the day slots. Returns (csv_text, rides_left_out); a day
+    has at most 4 or 5 slots.
+
+    One row per rider, or two when they have both kinds of ride: the form's
+    LOCK-IN box applies to a whole response, so repeating rides go on a row
+    with it ticked and one-off rides on a row without."""
     from .models import Ride
 
     layout = read_layout(FORM_HEADERS)
@@ -565,19 +620,19 @@ def export_week(monday):
         Ride.objects.filter(pickup_time__date__gte=monday, pickup_time__date__lte=monday + timedelta(days=4))
         .order_by("pickup_time")
     )
-    by_rider = {}
+    groups = {}
     for ride in rides:
-        by_rider.setdefault(ride.rider_phone, []).append(ride)
+        groups.setdefault((ride.rider_phone, ride.series is not None), []).append(ride)
 
     now = timezone.localtime()
     out = io.StringIO()
     writer = csv.writer(out)
     writer.writerow(FORM_HEADERS)
     left_out = 0
-    for phone, mine in sorted(by_rider.items(), key=lambda item: item[1][0].rider_name.lower()):
+    order = sorted(groups.items(), key=lambda item: (item[1][0].rider_name.lower(), item[0][0], not item[0][1]))
+    for (phone, repeating), mine in order:
         row = [""] * len(FORM_HEADERS)
-        first = mine[0]
-        row[layout["name"]] = first.rider_name
+        row[layout["name"]] = mine[0].rider_name
         if "timestamp" in layout:
             row[layout["timestamp"]] = f"{_date_text(now.date())} {now:%H:%M:%S}"
         if "email" in layout:
@@ -586,7 +641,7 @@ def export_week(monday):
         mobility = next((m for m in (_split_mobility(r.notes)[0] for r in mine) if m), "")
         if "mobility" in layout and mobility:
             row[layout["mobility"]] = mobility
-        if "lock_in" in layout and any(r.series for r in mine):
+        if "lock_in" in layout and repeating:
             row[layout["lock_in"]] = LOCK_IN_ANSWER
         for weekday in range(5):
             day_rides = [r for r in mine if timezone.localtime(r.pickup_time).weekday() == weekday]
@@ -604,5 +659,5 @@ def export_week(monday):
                     row[values[1]] = _time_text(local.time())
                 if cols.get("notes") is not None:
                     row[cols["notes"]] = _split_mobility(ride.notes)[1]  # equipment has its own column
-        writer.writerow(row)
+        writer.writerow([_safe(cell) for cell in row])
     return out.getvalue(), left_out

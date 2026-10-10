@@ -195,7 +195,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "ride_lookup": "10/min",
         "ride_lookup_number": "20/hour",
-        "ride_lookup_global": "600/hour",
+        "ride_lookup_global": "6000/hour",  # a ceiling well above any one visitor (10/min)
     },
     # How many proxies sit in front of the app. Render has one, which adds the
     # visitor's real address to X-Forwarded-For; trusting only that entry

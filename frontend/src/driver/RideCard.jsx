@@ -6,8 +6,8 @@ import { formatPhone } from "../lib/phone.js";
 import { formatTime } from "../lib/time.js";
 
 // A current ride (on the way): who, where, the map, notes, and Mark complete.
-// Being in Current means "on the way", so there's no On the way / Undo; the ✕
-// takes the ride back out of Current (the rider's page goes back to waiting).
+// The ✕ takes the ride back out of Current (the rider's page goes back to
+// waiting); 💬 and 📞 text or call the rider.
 //
 // Props:
 //   ride       the ride

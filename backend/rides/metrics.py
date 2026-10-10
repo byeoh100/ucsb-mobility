@@ -1,4 +1,4 @@
-"""Ride counts for the driver profile (dispatch only).
+"""Ride counts for the driver modal and the Metrics page (dispatch only).
 
 A ride counts once it's assigned to the driver and completed (rides/status.py):
 marked complete, or past RIDE_CUTOFF after pickup. For now that includes

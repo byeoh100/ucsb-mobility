@@ -1,4 +1,5 @@
-import { shiftDate } from "../../lib/time.js";
+import { DAYS } from "../../lib/shifts.js";
+import { shiftDate, shortDate, weekdayOf } from "../../lib/time.js";
 
 // "Repeat" options for a new ride: which weekdays, and until when. The server
 // makes one ride per matching day (rides/recurrence.py), each with its own link.
@@ -11,14 +12,8 @@ import { shiftDate } from "../../lib/time.js";
 //   error     message to show, if any
 
 export const MAX_SPAN_DAYS = 120; // keep in step with rides/recurrence.py
-// Rides repeat on weekdays only (no service on weekends).
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+// Rides repeat on weekdays only (no service on weekends): DAYS is Mon-Fri.
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-// Monday = 0 ... Sunday = 6
-export function weekdayOf(isoDate) {
-  return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
-}
 
 // Every date from start to until (inclusive) on one of the chosen weekdays.
 export function repeatDates(start, days, until) {
@@ -40,9 +35,6 @@ export function repeatProblem(start, days, until) {
   return "";
 }
 
-const shortDate = (iso) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-
 export default function RepeatFields({ start, days, until, onChange, error }) {
   const dates = repeatDates(start, days, until);
   const toggle = (day) =>
@@ -53,7 +45,7 @@ export default function RepeatFields({ start, days, until, onChange, error }) {
       <div className="field">
         <span id="repeat-days-label">On</span>
         <div className="weekday-picker" role="group" aria-labelledby="repeat-days-label">
-          {WEEKDAYS.map((label, day) => (
+          {DAYS.map((label, day) => (
             <button
               key={day}
               type="button"

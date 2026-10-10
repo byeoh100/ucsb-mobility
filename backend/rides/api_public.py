@@ -11,8 +11,8 @@ from rest_framework.views import APIView
 from common.phone import normalize_phone
 
 from .models import Ride
-from .rider_page import COMPLETE, EXPIRED, LIVE, UPCOMING, page_payload, phase_of, ride_status
-from .status import ON_THE_WAY, RIDE_CUTOFF
+from .rider_page import COMPLETE, EXPIRED, LIVE, UPCOMING, page_payload, phase_of
+from .status import ON_THE_WAY, RIDE_CUTOFF, status_of
 
 
 class Public(APIView):
@@ -35,7 +35,7 @@ class RiderConfirmView(Public):
     def post(self, request, token):
         ride = self.ride(token)
         now = timezone.now()
-        if phase_of(ride, now) != LIVE or ride_status(ride, now) != ON_THE_WAY:
+        if phase_of(ride, now) != LIVE or status_of(ride, now) != ON_THE_WAY:
             return Response({"error": "You can confirm once your driver is on the way."}, status=status.HTTP_400_BAD_REQUEST)
         if ride.rider_confirmed_at is None:
             ride.rider_confirmed_at = now
