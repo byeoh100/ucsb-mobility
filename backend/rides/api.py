@@ -351,8 +351,7 @@ class FormImportPreviewView(APIView):
     what importing it would do, without changing anything. Dispatch only.
 
     {"slots": [{key, rider_name, weekday, time, pickup, dropoff, starts,
-                new_rides, existing_rides, problems, warnings, ...}],
-     "older": [{row, rider_name}]}   (responses replaced by a newer one)
+                new_rides, existing_rides, problems, warnings, ...}]}
     See rides/form_import.py.
     """
 
@@ -365,12 +364,12 @@ class FormImportPreviewView(APIView):
             return error("Choose the form's response sheet (a .csv file).")
         until = parse_date(request.data.get("until"))
         try:
-            slots, older = slots_from_csv(request.data["csv"])
+            slots = slots_from_csv(request.data["csv"])
         except FormError as err:
             return error(str(err))
         except Exception:  # not CSV at all
             return error("Couldn't read that file. Download the responses from Google Sheets as a .csv.")
-        return Response({"slots": [check(slot, until) for slot in slots], "older": older})
+        return Response({"slots": [check(slot, until) for slot in slots]})
 
 
 class FormImportView(APIView):

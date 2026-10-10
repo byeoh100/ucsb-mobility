@@ -19,7 +19,7 @@ const MAX_DAYS = 120; // the server's limit on how long a series runs
 export default function FormImport({ today, onDone, onClose }) {
   const [file, setFile] = useState(null);
   const [until, setUntil] = useState(shiftDate(today, 70)); // about a quarter
-  const [preview, setPreview] = useState(null); // { slots, older }
+  const [preview, setPreview] = useState(null); // { slots }
   const [chosen, setChosen] = useState({}); // key → included
   const [edits, setEdits] = useState({}); // key → { pickup, dropoff }
   const [result, setResult] = useState(null);
@@ -165,12 +165,6 @@ export default function FormImport({ today, onDone, onClose }) {
         {riders.length === 1 ? "rider" : "riders"}. LOCK-IN rides repeat weekly until {formatDayLabel(until)}; the
         rest are one ride on the date given.
       </p>
-      {preview.older.length > 0 && (
-        <p className="hint">
-          Using each rider's newest response; skipped older ones from{" "}
-          {preview.older.map((o) => `${o.rider_name || "(no name)"} (row ${o.row})`).join(", ")}.
-        </p>
-      )}
       {errors.length > 0 && (
         <div className="import-errors" role="group" aria-label="Errors">
           <span className="import-errors-title">

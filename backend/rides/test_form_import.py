@@ -151,16 +151,33 @@ class ImportApiTests(TestCase):
         fixed = {**slots[0], "pickup": "Library", "dropoff": "UCen"}
         self.assertEqual(self.run_import([fixed]).json()["series"], 1)
 
-    def test_only_the_newest_response_per_phone_counts(self):
+    def test_every_response_counts_and_repeats_keep_the_earliest_start(self):
         text = sheet(
-            rider(stamp="10/12/2026 10:00:00", **{"MONDAY Location #1 (Start to End)": "New to Place",
+            # First response: Mondays 8:00 from Oct 26, Tuesdays 9:00.
+            rider(stamp="10/1/2026 10:00:00", **{"MONDAY Location #1 (Start to End)": "A to B",
+                                                  "MONDAY #1": ["10/26/2026", "8:00:00 AM"],
+                                                  "TUESDAY Location #1  (Start to End)": "C to D",
+                                                  "TUESDAY #1": ["10/20/2026", "9:00:00 AM"]}),
+            # Sent again to add Wednesdays; repeats Mondays 8:00 but from an earlier date.
+            rider(stamp="10/12/2026 10:00:00", **{"MONDAY Location #1 (Start to End)": "A to B",
+                                                   "MONDAY #1": ["10/19/2026", "8:00:00 AM"],
+                                                   "WEDNESDAY Location #1  (Start to End)": "E to F",
+                                                   "WEDNESDAY #1": ["10/21/2026", "1:00:00 PM"]}),
+            # Not LOCK-IN: one-offs are all kept, even at the same time.
+            rider(stamp="10/13/2026 10:00:00", **{"LOCK-IN (fill out below once and it will repeat)": "",
+                                                   "MONDAY Location #1 (Start to End)": "G to H",
                                                    "MONDAY #1": ["10/19/2026", "8:00:00 AM"]}),
-            rider(stamp="10/1/2026 10:00:00", **{"MONDAY Location #1 (Start to End)": "Old to Place",
-                                                  "MONDAY #1": ["10/19/2026", "8:00:00 AM"]}),
         )
-        body = self.preview(text).json()
-        self.assertEqual([s["pickup"] for s in body["slots"]], ["New"])
-        self.assertEqual(body["older"], [{"row": 3, "rider_name": "Ana Lee"}])
+        slots = self.preview(text).json()["slots"]
+        summary = [(s["row"], s["weekday"], s["pickup"], s["starts"], s["lock_in"]) for s in slots]
+        self.assertEqual(summary, [
+            (2, 1, "C", "2026-10-20", True),
+            (3, 0, "A", "2026-10-19", True),   # the earlier start wins...
+            (3, 2, "E", "2026-10-21", True),
+            (4, 0, "G", "2026-10-19", False),
+        ])
+        self.assertEqual(slots[1]["warnings"], ["Also in row 2; using the earliest start."])  # ...noted on it
+        self.assertEqual(slots[0]["warnings"], [])
 
     def test_non_ucsb_email_is_dropped_with_a_warning(self):
         text = sheet(rider(**{"Email Address": "ana@gmail.com", "MONDAY Location #1 (Start to End)": "A to B",

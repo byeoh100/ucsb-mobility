@@ -20,7 +20,9 @@ weekday, from the slot's date (or today, if that's later) until the "repeat
 until" date picked when importing. Any other response is one ride per slot,
 on the slot's date. Re-importing the same sheet is
 safe: rides that already exist (same phone number, same pickup time) are
-skipped. When one phone number has several responses, only the newest counts.
+skipped. Riders often send the form again to add rides, so every response counts;
+a weekly ride that appears in several responses is kept once, from its
+earliest start date.
 """
 
 import csv
@@ -321,6 +323,9 @@ def plan_slot(slot, until, today=None):
     given = date.fromisoformat(slot["first_date"]) if slot.get("first_date") else None
     if slot.get("bad_date"):
         problems.append(f'Could not parse: "{slot["bad_date"]}"')
+    if slot.get("also_in_rows"):
+        rows = ", ".join(str(r) for r in slot["also_in_rows"])
+        warnings.append(f"Also in row{'s' if len(slot['also_in_rows']) > 1 else ''} {rows}; using the earliest start.")
     if slot.get("lock_in"):
         # LOCK-IN: weekly on this weekday, from the given date (or today).
         if given and given.weekday() != weekday:
@@ -370,25 +375,18 @@ def _existing(phone, dates, at):
 
 def slots_from_csv(text):
     """Every filled slot in the sheet, as dicts the preview shows and edits.
-    Only each phone number's newest response is used; returns (slots, older)
-    where older lists the responses that were passed over."""
+
+    Riders often send the form again to add rides, so every response counts.
+    The one exception: the same weekly LOCK-IN ride (same phone number,
+    weekday and time) in several responses is kept once, from the earliest
+    start date given; the preview notes the other rows it was in."""
     header, rows = read_csv(text)
     layout = read_layout(header)
 
-    # Newest response per phone number (by Timestamp; later rows win ties).
-    groups = {}
+    slots = []
     for n, row in enumerate(rows, start=2):  # sheet row numbers (row 1 = headers)
         if not any(c.strip() for c in row):
             continue
-        key = re.sub(r"\D", "", _cell(row, layout["phone"]))[-10:] or f"row{n}"
-        stamp = parse_timestamp(_cell(row, layout.get("timestamp"))) or datetime.min
-        groups.setdefault(key, []).append((stamp, n, row))
-
-    slots, older = [], []
-    for responses in sorted(groups.values(), key=lambda g: max(r[1] for r in g)):
-        responses.sort(key=lambda r: (r[0], r[1]))
-        *passed_over, (_, n, row) = responses
-        older += [{"row": m, "rider_name": _cell(r, layout["name"])} for _, m, r in passed_over]
         mobility = _cell(row, layout.get("mobility"))
         # LOCK-IN is a checkbox; ticked, the cell holds its one option's text.
         # (Checkbox cells list every ticked option, comma-separated.)
@@ -431,7 +429,37 @@ def slots_from_csv(text):
                 "lock_in": lock_in,
                 "notes": "\n".join(notes),
             })
-    return slots, older
+    return _merge_repeats(slots)
+
+
+def _merge_repeats(slots):
+    """Keep one of each weekly LOCK-IN ride (phone, weekday, time): the one
+    starting earliest. One-off rides are all kept."""
+    today = timezone.localdate()
+    kept, by_key = [], {}
+    for slot in slots:
+        at = parse_time(slot["time"] or "")
+        phone = re.sub(r"\D", "", slot["rider_phone"])[-10:]
+        if not (slot["lock_in"] and at and len(phone) == 10):
+            kept.append(slot)
+            continue
+        key = (phone, slot["weekday"], at)
+        start = lambda s: max(date.fromisoformat(s["first_date"]) if s["first_date"] else today, today)
+        if key not in by_key:
+            slot["also_in_rows"] = []
+            by_key[key] = slot
+            kept.append(slot)
+            continue
+        first = by_key[key]
+        if start(slot) < start(first):
+            # This response starts it sooner: it replaces the one kept so far.
+            slot["also_in_rows"] = sorted(first["also_in_rows"] + [first["row"]])
+            kept[kept.index(first)] = slot
+            by_key[key] = slot
+        else:
+            first["also_in_rows"] = sorted(first["also_in_rows"] + [slot["row"]])
+    # Sheet order, so each response's rides stay together in the preview.
+    return sorted(kept, key=lambda s: (s["row"], s["weekday"], s["slot"]))
 
 
 def check(slot, until, today=None):
