@@ -32,7 +32,7 @@ export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
           <span className="ride-card-name">{ride.rider_name}</span>
           <RouteLine ride={ride} />
         </div>
-        {/* ✕ over 📞, both asking first since they're close together */}
+        {/* ✕ over 💬 📞. ✕ and call ask first; texting just opens Messages. */}
         <div className="ride-card-head-actions">
           <button
             className="remove-current"
@@ -43,7 +43,10 @@ export default function RideCard({ ride, timeZone, onChanged, you, sharing }) {
           >
             ✕
           </button>
-          <CallButton ride={ride} />
+          <div className="contact-buttons">
+            <TextButton ride={ride} />
+            <CallButton ride={ride} />
+          </div>
         </div>
       </div>
       <QuickConfirm
@@ -128,6 +131,23 @@ export function CallButton({ ride }) {
         confirmHref={`tel:+1${ride.rider_phone}`}
       />
     </>
+  );
+}
+
+// Round message button: opens the phone's texting app to the rider's number.
+// (No "are you sure?": opening Messages sends nothing.)
+export function TextButton({ ride }) {
+  return (
+    <a
+      className="call-circle text-circle"
+      href={`sms:+1${ride.rider_phone}`}
+      aria-label={`Text ${ride.rider_name}, ${formatPhone(ride.rider_phone)}`}
+      title={`Text ${formatPhone(ride.rider_phone)}`}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 6.25a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zm5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5zm5 0a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5z" />
+      </svg>
+    </a>
   );
 }
 

@@ -376,7 +376,9 @@ select {
 .ride-card-head { display: flex; align-items: flex-start; gap: 0.75rem; }
 .ride-card-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
 .ride-card-head .ride-card-time, .ride-card-head .ride-card-name { line-height: 1.2; }
-.ride-card-head-actions { display: flex; flex-direction: column; gap: 0.4rem; }
+.ride-card-head-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+.contact-buttons { display: flex; gap: 0.4rem; } /* 💬 📞 side by side under ✕ */
+a.call-circle { text-decoration: none; }
 
 /* Current ride(s): one tab per passenger when riders share the cart */
 .current-rides { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -395,8 +397,8 @@ select {
 .start-next-add { border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; }
 .start-next-add .otw-button { background: var(--surface); color: var(--success); border: 2px solid var(--success); }
 .start-next-add .otw-button:hover { background: var(--selected-bg); }
-.ride-card-top { display: flex; align-items: center; gap: 0.6rem; }
-.ride-card-time { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ride-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.6rem; }
+.ride-card-time { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ride-card-rider { display: flex; align-items: center; gap: 0.6rem; }
 .ride-card-name { font-size: 1.2rem; font-weight: 600; }
 .confirmed-badge { align-self: flex-start; font-size: 0.85rem; font-weight: 700; color: var(--text); background: var(--selected-bg); padding: 0.2rem 0.65rem; border-radius: 999px; }
