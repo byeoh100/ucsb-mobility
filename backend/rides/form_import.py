@@ -248,17 +248,42 @@ def parse_timestamp(text):
 # that belong to the name.
 _TRIM = re.compile(r"^[^0-9A-Za-z(]+|[^0-9A-Za-z)]+$")
 _TO = re.compile(r"\s+to\s+", re.IGNORECASE)
+_SLASH = re.compile(r"/")
 _DASH = re.compile(r"-+>|→|–|—|-")
+# "Pick up: Storke Tower, Drop off: Library" (either order; "pickup",
+# "pick-up", "drop off", "dropoff", "drop-off", any case, colon optional).
+_PICKUP_LABEL = re.compile(r"\bpick[\s-]*up\b", re.IGNORECASE)
+_DROPOFF_LABEL = re.compile(r"\bdrop[\s-]*off\b", re.IGNORECASE)
+
+
+def _by_labels(text):
+    pick, drop = _PICKUP_LABEL.search(text), _DROPOFF_LABEL.search(text)
+    if not (pick and drop):
+        return None
+    if pick.start() < drop.start():
+        return text[pick.end():drop.start()], text[drop.end():]
+    return text[pick.end():], text[drop.end():pick.start()]
 
 
 def split_route(text):
-    """'Storke Tower to Library' or 'Storke Tower - Library' → ('Storke Tower', 'Library').
-    None if it can't be split into two names."""
+    """Pickup and drop-off from what the rider typed, or None if it can't be
+    split into two names. Tried in order:
+        'Pick up: Storke Tower, Drop off: Library'   (labels, either order)
+        'Storke Tower to Library'
+        'Storke Tower / Library'
+        'Storke Tower - Library', 'Storke Tower -> Library'"""
     text = (text or "").strip()
-    parts = _TO.split(text, maxsplit=1)
-    if len(parts) != 2:
-        parts = _DASH.split(text, maxsplit=1)
-    if len(parts) != 2:
+    parts = _by_labels(text)
+    if parts is None:
+        # Only one label ("Pick up Storke Tower to Library"): drop it and
+        # split on a separator instead.
+        text = _DROPOFF_LABEL.sub("", _PICKUP_LABEL.sub("", text)).strip()
+    for separator in (_TO, _SLASH, _DASH):
+        if parts is not None:
+            break
+        split = separator.split(text, maxsplit=1)
+        parts = split if len(split) == 2 else None
+    if parts is None:
         return None
     pickup, dropoff = (_TRIM.sub("", p.strip()) for p in parts)
     return (pickup, dropoff) if pickup and dropoff else None

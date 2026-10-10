@@ -62,6 +62,13 @@ class ParsingTests(TestCase):
             "  storke tower TO library ": ("storke tower", "library"),
             "Davidson Library (main) to UCen": ("Davidson Library (main)", "UCen"),
             "Toro Hall to Library": ("Toro Hall", "Library"),
+            "Storke Tower / Library": ("Storke Tower", "Library"),
+            "Storke Tower/Library": ("Storke Tower", "Library"),
+            "Pick up: Storke Tower, Drop off: Library": ("Storke Tower", "Library"),
+            "pickup Storke Tower dropoff Library": ("Storke Tower", "Library"),
+            "Pick-up - Phelps Hall. Drop-off - UCen": ("Phelps Hall", "UCen"),
+            "Drop off: Library; Pick up: Storke Tower": ("Storke Tower", "Library"),
+            "Pick up: Storke Tower to Library": ("Storke Tower", "Library"),  # one label: ignored, split on " to "
             "Library": None,
             "to Library": None,
             "": None,
