@@ -6,6 +6,8 @@ import ConfirmDialog from "../../components/ConfirmDialog.jsx";
 import Modal from "../../components/Modal.jsx";
 import { archiveCutoffIn, campusParts, formatTime, isValidDate, todayIn } from "../../lib/time.js";
 import DateNav from "./DateNav.jsx";
+import FormExport from "./FormExport.jsx";
+import FormImport from "./FormImport.jsx";
 import RideForm from "./RideForm.jsx";
 import RideTable from "./RideTable.jsx";
 import UnassignedRides from "./UnassignedRides.jsx";
@@ -36,6 +38,7 @@ export default function RidesPage() {
   const [deleting, setDeleting] = useState(null); // ride pending deletion
   const [deleteScope, setDeleteScope] = useState(""); // "following" = this and later rides in its series
   const [hideCompleted, setHideCompleted] = useHideCompleted();
+  const [sheet, setSheet] = useState(null); // "import" | "export": the Google Form dialogs
 
   // Drivers for the form's dropdown.
   useEffect(() => {
@@ -102,6 +105,10 @@ export default function RidesPage() {
         </h1>
         <div className="page-actions">
           <DateNav date={date} today={today} onChange={setDate} />
+          <div className="sheet-actions">
+            <button className="button-quiet" onClick={() => setSheet("import")}>Import</button>
+            <button className="button-quiet" onClick={() => setSheet("export")}>Export</button>
+          </div>
           <button className="button" onClick={() => setEditing({ ride: null })}>
             + Add ride
           </button>
@@ -230,6 +237,24 @@ export default function RidesPage() {
           </>
         )}
       </ConfirmDialog>
+      <Modal
+        open={sheet !== null}
+        onClose={() => setSheet(null)}
+        className={sheet === "import" ? "modal-import" : ""}
+        title={sheet === "import" ? "Import from the Google Form" : "Export to the Google Form layout"}
+      >
+        {sheet === "import" && (
+          <FormImport
+            today={today}
+            onClose={() => setSheet(null)}
+            onDone={() => {
+              setSheet(null);
+              load();
+            }}
+          />
+        )}
+        {sheet === "export" && <FormExport date={date} onClose={() => setSheet(null)} />}
+      </Modal>
     </section>
   );
 }

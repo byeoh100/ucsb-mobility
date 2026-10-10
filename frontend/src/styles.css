@@ -1064,3 +1064,25 @@ dialog.modal.modal-profile { width: min(780px, calc(100vw - 2rem)); }
 @media (prefers-reduced-motion: reduce) {
   .ring-segment, .metrics-list li, .bar { transition: none; }
 }
+
+/* ---------- Google Form import / export ---------- */
+.sheet-actions { display: flex; gap: 0.4rem; }
+dialog.modal.modal-import { width: min(1100px, calc(100vw - 2rem)); }
+.import-table-wrap { max-height: 60vh; overflow: auto; }
+.import-table { font-size: 0.88rem; }
+.import-table td { padding: 0.45rem 0.6rem; vertical-align: top; }
+.import-table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.import-rider td { background: var(--bg); padding-top: 0.55rem; }
+.import-blocked td:not(.import-notes) { color: var(--muted); }
+.import-input { width: 100%; min-width: 8rem; padding: 0.3rem 0.45rem; font: inherit; border: 1px solid var(--danger); border-radius: 6px; }
+.import-notes { min-width: 14rem; }
+.import-notes > span { display: block; }
+.import-problem { color: var(--danger); font-weight: 600; }
+.import-warning { color: var(--text); font-style: italic; }
+.import-note { color: var(--muted); white-space: pre-line; font-size: 0.82rem; }
+@media (max-width: 760px) {
+  .sheet-actions { justify-content: stretch; }
+  .sheet-actions .button-quiet { flex: 1; }
+  .import-table, .import-table tbody, .import-table tr, .import-table td { display: revert; }
+  .import-table thead { position: static; width: auto; height: auto; clip: auto; overflow: visible; }
+}

@@ -1,4 +1,4 @@
-from datetime import date as date_type
+from datetime import date as date_type, timedelta
 
 from django.db import transaction
 from django.db.models import Count
@@ -344,3 +344,78 @@ class StatsView(APIView):
         if (last - first).days >= 366:
             return error("Pick a range of a year or less.")
         return Response(range_stats(first, last))
+
+
+class FormImportPreviewView(APIView):
+    """POST {"csv": "<the form's response sheet>", "until": "YYYY-MM-DD"}:
+    what importing it would do, without changing anything. Dispatch only.
+
+    {"slots": [{key, rider_name, weekday, time, pickup, dropoff, starts,
+                new_rides, existing_rides, problems, warnings, ...}],
+     "older": [{row, rider_name}]}   (responses replaced by a newer one)
+    See rides/form_import.py.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        from .form_import import FormError, check, slots_from_csv
+
+        if not isinstance(request.data, dict) or not isinstance(request.data.get("csv"), str):
+            return error("Choose the form's response sheet (a .csv file).")
+        until = parse_date(request.data.get("until"))
+        try:
+            slots, older = slots_from_csv(request.data["csv"])
+        except FormError as err:
+            return error(str(err))
+        except Exception:  # not CSV at all
+            return error("Couldn't read that file. Download the responses from Google Sheets as a .csv.")
+        return Response({"slots": [check(slot, until) for slot in slots], "older": older})
+
+
+class FormImportView(APIView):
+    """POST {"until": "YYYY-MM-DD", "slots": [...]}: add the rides for these
+    slots (as the preview returned them, with any locations fixed by hand).
+    Everything is checked again here; rides that already exist are skipped.
+
+    {"rides": 34, "series": 9, "skipped": [{key, reason}]}
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        from .form_import import import_slots
+
+        slots = request.data.get("slots") if isinstance(request.data, dict) else None
+        if not isinstance(slots, list) or not all(isinstance(s, dict) and s.get("weekday") in range(5) for s in slots):
+            return error("Send the slots to import.")
+        until = parse_date(request.data.get("until"))
+        with transaction.atomic():
+            result = import_slots(slots, until)
+        return Response(result, status=status.HTTP_201_CREATED if result["rides"] else status.HTTP_200_OK)
+
+
+class FormExportView(APIView):
+    """GET /api/form-export/?week=YYYY-MM-DD: that week's rides (Monday to
+    Friday of the week the date is in) as a .csv in the Google Form's
+    response layout, one row per rider. Dispatch only.
+
+    The X-Rides-Left-Out header counts rides that didn't fit (a day has at
+    most 4 or 5 slots per rider).
+    """
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from django.http import HttpResponse
+
+        from .form_import import export_week
+
+        day = parse_date(request.query_params.get("week"))
+        monday = day - timedelta(days=day.weekday())
+        text, left_out = export_week(monday)
+        response = HttpResponse(text, content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="rides-week-of-{monday.isoformat()}.csv"'
+        response["X-Rides-Left-Out"] = str(left_out)
+        response["Access-Control-Expose-Headers"] = "X-Rides-Left-Out"
+        return response

@@ -1,7 +1,10 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .api import ArchiveDaysView, ArchiveRidesView, LocationView, RideViewSet, StatsView
+from .api import (
+    ArchiveDaysView, ArchiveRidesView, FormExportView, FormImportPreviewView, FormImportView, LocationView,
+    RideViewSet, StatsView,
+)
 from .api_public import RideLookupView, RiderConfirmView, RiderPageView, RiderPinsView
 
 router = SimpleRouter()
@@ -12,6 +15,9 @@ urlpatterns = [
     path("archive/days/", ArchiveDaysView.as_view()),
     path("location/", LocationView.as_view()),
     path("stats/", StatsView.as_view()),
+    path("form-import/preview/", FormImportPreviewView.as_view()),
+    path("form-import/", FormImportView.as_view()),
+    path("form-export/", FormExportView.as_view()),
     # Public, for riders (no sign-in; the link token is the key)
     path("r/<str:token>/", RiderPageView.as_view()),
     path("r/<str:token>/confirm/", RiderConfirmView.as_view()),

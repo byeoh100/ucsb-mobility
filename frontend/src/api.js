@@ -84,6 +84,33 @@ export const statsApi = {
   get: (from, to) => request(`/stats/?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
 };
 
+// The Google Form's response sheet: import (preview, then add) and export.
+export const formApi = {
+  preview: (csv, until) => request("/form-import/preview/", { method: "POST", body: { csv, until } }),
+  import: (slots, until) => request("/form-import/", { method: "POST", body: { slots, until } }),
+  // Downloads the week's .csv; resolves to how many rides didn't fit.
+  async export(week) {
+    let response;
+    try {
+      response = await fetch(`/api/form-export/?week=${encodeURIComponent(week)}`, { credentials: "same-origin" });
+    } catch {
+      throw new ApiError("Can't reach the server. Check your connection.", 0);
+    }
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new ApiError(data.error || data.detail || `Export failed (${response.status})`, response.status, data);
+    }
+    const blob = await response.blob();
+    const name = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") ?? "")?.[1] ?? "rides.csv";
+    const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    return Number(response.headers.get("X-Rides-Left-Out") ?? 0);
+  },
+};
+
 export const locationApi = {
   send: ({ lat, lng, accuracy }) => request("/location/", { method: "POST", body: { lat, lng, accuracy } }),
 };
